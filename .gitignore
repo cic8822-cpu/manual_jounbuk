@@ -1,0 +1,2 @@
+# Windows reserved device name; cannot be tracked by Git on Windows
+nul
