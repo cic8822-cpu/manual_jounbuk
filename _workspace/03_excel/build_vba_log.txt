@@ -1,0 +1,10 @@
+기초자료입력!G1/H1 레코드 추적 셀 추가 완료
+기존 모듈 Module_기초자료 제거 후 재생성
+기존 모듈 Module_출력 제거 후 재생성
+Module_기초자료 추가 완료 (줄 수: 160)
+Module_출력 추가 완료 (줄 수: 80)
+ThisWorkbook 문서모듈 식별: 현재_통합_문서
+ThisWorkbook.Workbook_Open 추가 완료
+기초자료입력 버튼 4개 배치 완료
+서식선택_출력 버튼 2개 배치 완료
+VBA 매크로 및 버튼 추가 후 저장 완료: C:\Users\최익창\Downloads\나연수\artifacts\excel\교복구매_길라잡이_Excel_v1.xlsm
