@@ -20,13 +20,20 @@
    - 참고자료:  "C:\Users\user\Downloads\나연수_26.9.10\20230808_용역계약갈라잡이(디깅모멘텀)_이행원.xlsm"
 7. 3.  교복구매 관련 학교에서 교사나 행정실 직원들이 공문,계약서,적격심사평가표,등 작성어려워하고 잇어서
    작성을 쉽게 하기위해 자동화 플랫폼을 만들고 싶어
- -리서치를 해서 다른 교육청에서 플랫폼 구성한곳이 있는지 유사한 작업이나 결과물이 있는지 조사하고 
+ -리서치를 해서 다른 교육청에서 플랫폼 구성한곳이 있는지 유사한 작업이나 결과물이 있는지 조사하고
   우리 작업에도 반영하고 싶어
-8. 엑셀로 교복구매 길자잡이를 만들고  배포 하고 싶어 작업이 완료되면 다음 단계로 웹앱으로 만들어 배포 해서 
+8. 엑셀로 교복구매 길자잡이를 만들고  배포 하고 싶어 작업이 완료되면 다음 단계로 웹앱으로 만들어 배포 해서
    학교에서 접근 사용할수 잇게 하고 싶어  웹앱은 코덱스 사이트로 작업하거나 supabase로 작업해야 할것 같은데
    나도 잘 모르고 학교도 잘 모르니까 최대한 쉽고 접근하기 쉽고 관리하기 쉬운 방법을 제안해줘
-
-
+9. hwpx 작업은 kordoc skill 사용해서 작업해줘
+  - https://github.com/chrisryugj/kordoc.git
+  - "C:\Users\user\Downloads\kordoc"
+10.웹앱 디자인은 ui ux max pro skill 사용해서 디자인을 개선해줘
+ - https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git
+ -"C:\Users\user\Downloads\ui ux max pro skill"
+11. 웹 조사는 다음 을 참고해서 진행해줘
+ - https://github.com/byungjunjang/web-crawler.git
+ - https://github.com/fivetaku/insane-search.git
 -----------
 
 ---------
@@ -36,13 +43,15 @@
 
 ------------
 [claude 계획]
-3. 챗지피티,클로드 계획을 참고해서 코드리뷰어 agent  로 검토해줘 
+3. 첨부한 계획을 참고해서 코드리뷰어 agent  로 검토해줘
   그리고 수정사항 반영해서 계획을 수립하고 계획.md 파일 만들어줘
 ----------
 [하네스구성]
-4. 하네스 구성해줘 참고할 위치는 다음과 같아
+4. 첨부한 계획을 참고해서 하네스 구성해줘 참고할 위치는 다음과 같아
  - https://github.com/revfactory/harness.git 참고해서 skill 등록해줘
 5. https://code.claude.com/docs/ko/goal 참고해서 /goal 기능을 skill로 사용할수 있게 해줘
+6. 계획에 맞게 하네스 구성시 필요한 스킬과 에이전트를 구성해줘 다음 참고해서
+ - https://github.com/revfactory/harness-100.git
 6. 카피시 claude.md를 지침(https://github.com/multica-ai/andrej-karpathy-skills/blob/main/CLAUDE.md)으로 적용해줘(항상 한글로 답변하도도록 지침 추가하고))
 
 -------------
