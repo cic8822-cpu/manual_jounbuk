@@ -139,6 +139,156 @@ if ($null -ne $gate) {
     }
 }
 
+if ($null -ne $gate -and $gate.activePhase -eq 'P1-02') {
+    $inventoryPath = Join-Path $root '서식_인벤토리.md'
+    $rawStructurePath = Join-Path $root '_workspace\02_hwpx\P0-02_구조.json'
+    if (-not (Test-Path -LiteralPath $inventoryPath -PathType Leaf)) {
+        $failures.Add('P1-02 인벤토리 문서 누락: 서식_인벤토리.md')
+    } elseif (-not (Test-Path -LiteralPath $rawStructurePath -PathType Leaf)) {
+        $failures.Add('P1-02 원시 구조 JSON 누락')
+    } else {
+        $inventoryContent = Get-Content -LiteralPath $inventoryPath -Raw -Encoding UTF8
+        $formSection = [regex]::Match($inventoryContent, '(?ms)^## 2\. Form ID 목록\s*$\r?\n(.*?)(?=^##\s|\z)')
+        if (-not $formSection.Success) {
+            $failures.Add('P1-02 Form ID 목록 구역 누락')
+        } else {
+            $formIds = [regex]::Matches($formSection.Groups[1].Value, '(?m)^\|\s*(F-\d{3})\s*\|') | ForEach-Object { $_.Groups[1].Value }
+            $expectedFormIds = 1..57 | ForEach-Object { 'F-{0:D3}' -f $_ }
+            if (@($formIds).Count -ne 57 -or (@($formIds | Select-Object -Unique).Count -ne 57) -or ([string]::Join(',', $formIds) -ne [string]::Join(',', $expectedFormIds))) {
+                $failures.Add('P1-02 Form ID가 F-001~F-057의 고유·연속 목록이 아님')
+            }
+        }
+
+        $rawStructure = Get-Content -LiteralPath $rawStructurePath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $rawCandidates = @($rawStructure.blocks | Where-Object { $_.type -eq 'paragraph' -and $_.text -match '^\s*\[\s*\d+(?:[-_]\d+)?\s*\]' }).Count
+        if ($rawCandidates -ne 58) {
+            $failures.Add("P1-02 원시 서식 표제 후보 수 불일치: $rawCandidates")
+        }
+
+        foreach ($requiredText in @(
+            '`[9-13] 참고 단가 비율표 기준`',
+            'Form ID `F-018`, `F-019`로 분리',
+            '개인식별정보·연락처·서명·설문 원자료의 수집·저장·자동치환·로그 기록을 금지',
+            '## 3. 담당·난이도 적용표',
+            '`F-001`~`F-057`의 모든 Form ID에 빠짐없이 적용함'
+        )) {
+            if (-not $inventoryContent.Contains($requiredText)) {
+                $failures.Add("P1-02 인벤토리 필수 근거 누락: $requiredText")
+            }
+        }
+    }
+}
+
+if ($null -ne $gate -and $gate.activePhase -eq 'P1-03') {
+    $dictionaryPath = Join-Path $root '입력데이터_사전.md'
+    $mappingPath = Join-Path $root '서식_매핑표.md'
+    foreach ($requiredPath in @($dictionaryPath, $mappingPath)) {
+        if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
+            $failures.Add("P1-03 필수 문서 누락: $(Split-Path -Leaf $requiredPath)")
+        }
+    }
+
+    if ((Test-Path -LiteralPath $dictionaryPath -PathType Leaf) -and (Test-Path -LiteralPath $mappingPath -PathType Leaf)) {
+        $dictionaryContent = Get-Content -LiteralPath $dictionaryPath -Raw -Encoding UTF8
+        $mappingContent = Get-Content -LiteralPath $mappingPath -Raw -Encoding UTF8
+        $mappingSection = [regex]::Match($mappingContent, '(?ms)^## 2\. Form ID별 매핑\s*$\r?\n(.*?)(?=^##\s|\z)')
+        if (-not $mappingSection.Success) {
+            $failures.Add('P1-03 Form ID별 매핑 구역 누락')
+        } else {
+            $mappedFormIds = [regex]::Matches($mappingSection.Groups[1].Value, '(?m)^\|\s*(F-\d{3})\s*\|') | ForEach-Object { $_.Groups[1].Value }
+            $expectedMappedFormIds = 1..52 | ForEach-Object { 'F-{0:D3}' -f $_ }
+            if (@($mappedFormIds).Count -ne 52 -or (@($mappedFormIds | Select-Object -Unique).Count -ne 52) -or ([string]::Join(',', $mappedFormIds) -ne [string]::Join(',', $expectedMappedFormIds))) {
+                $failures.Add('P1-03 Form ID 매핑이 F-001~F-052의 고유·연속 목록이 아님')
+            }
+
+            $expandFormIds = {
+                param([string]$value)
+                $expanded = [System.Collections.Generic.List[string]]::new()
+                foreach ($rangeMatch in [regex]::Matches($value, 'F-(\d{3})(?:~F-(\d{3}))?')) {
+                    $start = [int]$rangeMatch.Groups[1].Value
+                    $end = if ($rangeMatch.Groups[2].Success) { [int]$rangeMatch.Groups[2].Value } else { $start }
+                    for ($number = $start; $number -le $end; $number++) {
+                        $expanded.Add(('F-{0:D3}' -f $number))
+                    }
+                }
+                return @($expanded)
+            }
+
+            $calculationAllowances = @{}
+            foreach ($dictionaryRow in [regex]::Matches($dictionaryContent, '(?m)^\|\s*(K-\d{2})\s*\|.*\|\s*([^|]+)\s*\|\s*$')) {
+                $calculationAllowances[$dictionaryRow.Groups[1].Value] = @(& $expandFormIds $dictionaryRow.Groups[2].Value | Sort-Object -Unique)
+            }
+            $calculationMappings = @{}
+            foreach ($mappingRow in [regex]::Matches($mappingSection.Groups[1].Value, '(?m)^\|\s*(F-\d{3})\s*\|[^|]*\|[^|]*\|\s*([^|]+)\|')) {
+                $formId = $mappingRow.Groups[1].Value
+                foreach ($calculationId in [regex]::Matches($mappingRow.Groups[2].Value, 'K-\d{2}') | ForEach-Object { $_.Value }) {
+                    if (-not $calculationMappings.ContainsKey($calculationId)) {
+                        $calculationMappings[$calculationId] = [System.Collections.Generic.List[string]]::new()
+                    }
+                    $calculationMappings[$calculationId].Add($formId)
+                }
+            }
+            foreach ($calculationId in @('K-01', 'K-02', 'K-03', 'K-04')) {
+                $allowed = @($calculationAllowances[$calculationId] | Sort-Object -Unique)
+                $used = if ($calculationMappings.ContainsKey($calculationId)) { @($calculationMappings[$calculationId] | Sort-Object -Unique) } else { @() }
+                if ([string]::Join(',', $allowed) -ne [string]::Join(',', $used)) {
+                    $failures.Add("P1-03 계산 필드 허용 대상 불일치: $calculationId")
+                }
+            }
+
+            $inventoryPath = Join-Path $root '서식_인벤토리.md'
+            if (-not (Test-Path -LiteralPath $inventoryPath -PathType Leaf)) {
+                $failures.Add('P1-03 개인정보 경계 인벤토리 문서 누락')
+            } else {
+                $inventoryContent = Get-Content -LiteralPath $inventoryPath -Raw -Encoding UTF8
+                $protectedSection = [regex]::Match($inventoryContent, '(?ms)^## 6\. 개인정보 문서의 허용 입력 경계\s*$\r?\n(.*?)(?=^##\s|\z)')
+                if (-not $protectedSection.Success) {
+                    $failures.Add('P1-03 개인정보 문서 허용 입력 경계 구역 누락')
+                }
+                foreach ($protectedFormId in @('F-029', 'F-047', 'F-050')) {
+                    $inventoryRow = [regex]::Match($protectedSection.Groups[1].Value, "(?m)^\|\s*$protectedFormId\s*\|[^|]*\|\s*([^|]+)\|\s*([^|]+)\|")
+                    $mappingRow = [regex]::Match($mappingSection.Groups[1].Value, "(?m)^\|\s*$protectedFormId\s*\|\s*([^|]+)\|[^|]*\|[^|]*\|\s*금지:\s*([^;|]+);")
+                    if (-not $inventoryRow.Success -or -not $mappingRow.Success) {
+                        $failures.Add("P1-03 개인정보 문서 허용 필드 행 누락: $protectedFormId")
+                        continue
+                    }
+                    $inventoryAllowed = @([regex]::Matches($inventoryRow.Groups[1].Value, '[CBRD]-\d{2}') | ForEach-Object { $_.Value } | Sort-Object -Unique)
+                    $mappingAllowed = @([regex]::Matches($mappingRow.Groups[1].Value, '[CBRD]-\d{2}') | ForEach-Object { $_.Value } | Sort-Object -Unique)
+                    if ([string]::Join(',', $inventoryAllowed) -ne [string]::Join(',', $mappingAllowed)) {
+                        $failures.Add("P1-03 개인정보 문서 허용 필드 불일치: $protectedFormId")
+                    }
+                    $inventoryForbidden = $inventoryRow.Groups[2].Value.Trim()
+                    $mappingForbidden = $mappingRow.Groups[2].Value.Trim()
+                    if ($inventoryForbidden -ne $mappingForbidden) {
+                        $failures.Add("P1-03 개인정보 문서 금지 필드 불일치: $protectedFormId")
+                    }
+                }
+            }
+        }
+
+        foreach ($requiredText in @(
+            '## 1. 데이터 영역',
+            '## 2. 필드 정의',
+            '## 3. 보호 필드 및 금지 처리',
+            '## 4. 검증 순서',
+            '개인식별·연락처·서명·치수·개별 응답은 입력·저장·치환·로그·Git·웹 전송 대상에서 제외',
+            'F-053~F-057',
+            '| F-053~F-057 | 입력·치환·출력 선택 대상에서 제외 |',
+            '실제 HWPX 치환 위치·반복 표 구조는 P2 사본 POC에서만 확정함.',
+            '| F-029 | C-01~C-02, C-05 |',
+            '금지: 동의자 성명·주소·연락처·서명·식별번호; 빈 양식',
+            '| F-047 | C-01~C-02, B-07, D-02 |',
+            '금지: 학생·학부모 성명·연락처·신청 여부·치수·개별 수량; 빈 응답란',
+            '| F-050 | C-01~C-02, D-02, D-05 |',
+            '금지: 응답자 성명·연락처·개별 응답·자유서술; 빈 설문지'
+        )) {
+            if (-not ($dictionaryContent + "`n" + $mappingContent).Contains($requiredText)) {
+                $failures.Add("P1-03 데이터 모델 필수 근거 누락: $requiredText")
+            }
+        }
+    }
+}
+
 $logPath = Join-Path $root '로그.md'
 if (Test-Path -LiteralPath $logPath -PathType Leaf) {
     $logContent = Get-Content -LiteralPath $logPath -Raw

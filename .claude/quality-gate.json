@@ -1,8 +1,8 @@
 {
-  "activePhase": "P0",
-  "phaseTasks": ["P0-01", "P0-02", "P0-03"],
-  "phaseChecklistHeading": "## P0 완료 게이트",
-  "phaseTestIds": ["Q-01", "Q-02", "Q-03", "Q-04", "Q-05"],
+  "activePhase": "P1-03",
+  "phaseTasks": ["P1-03"],
+  "phaseChecklistHeading": "## P1-03 작업 게이트",
+  "phaseTestIds": ["M-01", "M-02", "M-03", "M-04"],
   "sourceHashes": [
     {
       "path": "20230808_용역계약갈라잡이(디깅모멘텀)_이행원.xlsm",
