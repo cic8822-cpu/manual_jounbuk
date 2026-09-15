@@ -152,7 +152,18 @@ try {
     $ws.Rows.Item(1).AutoFilter() | Out-Null
     L "DB 시트 작성 완료 (열 수: $($dbHeaders.Count))"
 
-    # ---- 5. 서식선택_출력 ----
+    # ---- 5. DB_품목 (반복행 정규화 저장) ----
+    $wsItems = $wbNew.Worksheets.Add()
+    $wsItems.Name = "DB_품목"
+    $itemHeaders = @("레코드순번", "행번호", "품목명", "수량", "단가", "금액")
+    for ($i = 0; $i -lt $itemHeaders.Count; $i++) {
+        $wsItems.Cells.Item(1, $i + 1).Value2 = $itemHeaders[$i]
+        $wsItems.Cells.Item(1, $i + 1).Font.Bold = $true
+    }
+    $wsItems.Rows.Item(1).AutoFilter() | Out-Null
+    L "DB_품목 시트 작성 완료 (반복행 저장용)"
+
+    # ---- 6. 서식선택_출력 ----
     $wsSel = $wbNew.Worksheets.Add()
     $wsSel.Name = "서식선택_출력"
     $ws = $wsSel
@@ -455,7 +466,7 @@ try {
     $ws.Range("B8:C8").Merge() | Out-Null; $ws.Range("B8").Value2 = "품목"; $ws.Range("D8").Value2 = "수량"; $ws.Range("E8").Value2 = "단가비율(%)"; $ws.Range("F8:G8").Merge() | Out-Null; $ws.Range("F8").Value2 = "비고"
     $ws.Range("B9:B12").Merge() | Out-Null; $ws.Range("B9").Value2 = "동복"; $ws.Range("B13:B14").Merge() | Out-Null; $ws.Range("B13").Value2 = "하복"; $ws.Range("F9:G14").Merge() | Out-Null; $ws.Range("F9").Value2 = "품목별 단가 비율 기준과 ±3% 이상 차이가 나는 품목이 있을 시 기준 미충족"; $ws.Range("F9").WrapText = $true
     $itemsF24 = @("후드 점퍼","집업티","맨투맨티","긴바지(치마)","반팔티","반바지")
-    for ($i = 0; $i -lt 6; $i++) { $r = 9 + $i; $src = 29 + $i; $ws.Range("C$r").Value2 = $itemsF24[$i]; $ws.Range("D$r").Formula = "=IF(기초자료입력!C$src<>`"`",기초자료입력!C$src,1)"; $ws.Range("E$r").Formula = "=IF(SUM(기초자료입력!`$D`$29:`$D`$34)=0,`"`",TEXT(기초자료입력!D$src/SUM(기초자료입력!`$D`$29:`$D`$34)*100,`"0.0`")&`"%`")" }
+    for ($i = 0; $i -lt 6; $i++) { $r = 9 + $i; $src = 29 + $i; $defaultName = $itemsF24[$i]; $ws.Range("C$r").Formula = "=IF(기초자료입력!B$src<>`"`",기초자료입력!B$src,`"$defaultName`")"; $ws.Range("D$r").Formula = "=IF(기초자료입력!C$src<>`"`",기초자료입력!C$src,1)"; $ws.Range("E$r").Formula = "=IF(SUM(기초자료입력!`$D`$29:`$D`$34)=0,`"`",TEXT(기초자료입력!D$src/SUM(기초자료입력!`$D`$29:`$D`$34)*100,`"0.0`")&`"%`")" }
     $ws.Range("B15:C15").Merge() | Out-Null; $ws.Range("B15").Value2 = "합계"; $ws.Range("D15").Formula = "=SUM(D9:D14)"; $ws.Range("E15").Formula = '="100%"'; $ws.Range("F15:G15").Merge() | Out-Null
     $ws.Range("B17:G17").Merge() | Out-Null; $ws.Range("B17").Value2 = "20○○년    월    일"; $ws.Range("B18:G18").Merge() | Out-Null; $ws.Range("B18").Value2 = "제안자 성  명                    (서명 또는 날인)"; $ws.Range("B19:G19").Merge() | Out-Null; $ws.Range("B19").Formula = '=IF(기초자료입력!C4<>"",기초자료입력!C4,"○○○○학교")&"장 귀하"'
     $ws.Range("B6:G6,B8:G15").Borders.LineStyle = 1; $ws.Range("B8:G8").Font.Bold = $true; $ws.Range("B8:G8").HorizontalAlignment = -4108; $ws.Range("B15:G15").Font.Bold = $true

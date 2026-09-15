@@ -1,8 +1,9 @@
 기초자료입력!G1/H1 레코드 추적 셀 추가 완료
+제거할 빈 기본 시트 Sheet2 없음
 기존 모듈 Module_기초자료 제거 후 재생성
 기존 모듈 Module_출력 제거 후 재생성
-Module_기초자료 추가 완료 (줄 수: 176)
-Module_출력 추가 완료 (줄 수: 88)
+Module_기초자료 추가 완료 (줄 수: 245)
+Module_출력 추가 완료 (줄 수: 91)
 ThisWorkbook 문서모듈 식별: 현재_통합_문서
 기존 Workbook_Open 프로시저 제거 후 재생성
 ThisWorkbook.Workbook_Open 추가 완료

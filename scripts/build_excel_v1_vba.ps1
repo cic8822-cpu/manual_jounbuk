@@ -21,6 +21,29 @@ try {
     $wsIn.Range("H1").Value2 = ""
     L "기초자료입력!G1/H1 레코드 추적 셀 추가 완료"
 
+    # 반복행 저장 시트는 구조 빌더가 중단된 경우에도 VBA 빌더 재실행만으로 복구할 수 있게 보장함.
+    try {
+        $wsItems = $wb.Worksheets.Item("DB_품목")
+    } catch {
+        $wsItems = $wb.Worksheets.Add()
+        $wsItems.Name = "DB_품목"
+        $itemHeaders = @("레코드순번", "행번호", "품목명", "수량", "단가", "금액")
+        for ($i = 0; $i -lt $itemHeaders.Count; $i++) {
+            $wsItems.Cells.Item(1, $i + 1).Value2 = $itemHeaders[$i]
+            $wsItems.Cells.Item(1, $i + 1).Font.Bold = $true
+        }
+        $wsItems.Rows.Item(1).AutoFilter() | Out-Null
+        L "DB_품목 시트 복구 생성 완료"
+    }
+    try {
+        $blankSheet = $wb.Worksheets.Item("Sheet2")
+        if ($blankSheet.UsedRange.CountLarge -eq 1 -and [string]::IsNullOrWhiteSpace([string]$blankSheet.Range("A1").Value2)) {
+            $excel.DisplayAlerts = $false
+            $blankSheet.Delete()
+            L "빈 기본 시트 Sheet2 제거 완료"
+        }
+    } catch { L "제거할 빈 기본 시트 Sheet2 없음" }
+
     # ---- VBA 모듈 추가 (재실행 대비: 동일 이름 기존 모듈 제거 후 추가) ----
     $vbproj = $wb.VBProject
     foreach ($nm in @("Module_기초자료","Module_출력")) {
@@ -96,6 +119,15 @@ Function 필수값검증() As Boolean
     End If
 End Function
 
+Public Function 검증_필수값검증() As Boolean
+    Dim ws As Worksheet
+    Set ws = Sheets("기초자료입력")
+    검증_필수값검증 = Trim(ws.Range("C4").Value & "") <> "" And _
+        Trim(ws.Range("C5").Value & "") <> "" And _
+        Trim(ws.Range("C12").Value & "") <> "" And _
+        Trim(ws.Range("C22").Value & "") <> ""
+End Function
+
 Private Sub 필드복사_기초자료_DB(wsIn As Worksheet, wsDB As Worksheet, r As Long)
     wsDB.Cells(r, 2).Value = wsIn.Range("C4").Value
     wsDB.Cells(r, 3).Value = wsIn.Range("C5").Value
@@ -118,6 +150,46 @@ Private Sub 필드복사_기초자료_DB(wsIn As Worksheet, wsDB As Worksheet, r
     wsDB.Cells(r, 20).Value = Now
 End Sub
 
+Private Function 품목행검증(ByVal wsIn As Worksheet, ByVal showMessage As Boolean) As Boolean
+    Dim sourceRow As Long
+    품목행검증 = True
+    For sourceRow = 29 To 38
+        If Trim(wsIn.Cells(sourceRow, 2).Value & "") <> "" Then
+            If Not IsNumeric(wsIn.Cells(sourceRow, 3).Value) Or Not IsNumeric(wsIn.Cells(sourceRow, 4).Value) Or _
+                CDbl(wsIn.Cells(sourceRow, 3).Value) <= 0 Or CDbl(wsIn.Cells(sourceRow, 4).Value) <= 0 Then
+                If showMessage Then MsgBox "품목 " & (sourceRow - 28) & "행은 수량과 단가를 0보다 큰 숫자로 입력하세요.", vbExclamation
+                품목행검증 = False
+                Exit Function
+            End If
+        End If
+    Next sourceRow
+End Function
+
+Public Function 검증_품목행검증() As Boolean
+    검증_품목행검증 = 품목행검증(Sheets("기초자료입력"), False)
+End Function
+
+Private Sub 품목복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsItems As Worksheet, ByVal seq As Long)
+    Dim rowIndex As Long, sourceRow As Long, targetRow As Long
+    For rowIndex = wsItems.Cells(wsItems.Rows.Count, 1).End(xlUp).Row To 2 Step -1
+        If wsItems.Cells(rowIndex, 1).Value = seq Then wsItems.Rows(rowIndex).Delete
+    Next rowIndex
+
+    targetRow = wsItems.Cells(wsItems.Rows.Count, 1).End(xlUp).Row + 1
+    If targetRow < 2 Then targetRow = 2
+    For sourceRow = 29 To 38
+        If Trim(wsIn.Cells(sourceRow, 2).Value & "") <> "" Then
+            wsItems.Cells(targetRow, 1).Value = seq
+            wsItems.Cells(targetRow, 2).Value = sourceRow - 28
+            wsItems.Cells(targetRow, 3).Value = wsIn.Cells(sourceRow, 2).Value
+            wsItems.Cells(targetRow, 4).Value = wsIn.Cells(sourceRow, 3).Value
+            wsItems.Cells(targetRow, 5).Value = wsIn.Cells(sourceRow, 4).Value
+            wsItems.Cells(targetRow, 6).Value = wsIn.Cells(sourceRow, 5).Value
+            targetRow = targetRow + 1
+        End If
+    Next sourceRow
+End Sub
+
 Sub 저장하기()
     Call 저장하기_실행(True)
 End Sub
@@ -128,9 +200,11 @@ End Sub
 
 Private Sub 저장하기_실행(ByVal showMessage As Boolean)
     If Not 필수값검증() Then Exit Sub
-    Dim wsIn As Worksheet, wsDB As Worksheet
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
+    Set wsItems = Sheets("DB_품목")
+    If Not 품목행검증(wsIn, showMessage) Then Exit Sub
 
     Dim lastRow As Long
     lastRow = wsDB.Cells(wsDB.Rows.Count, 1).End(xlUp).Row
@@ -145,6 +219,7 @@ Private Sub 저장하기_실행(ByVal showMessage As Boolean)
 
     wsDB.Cells(newRow, 1).Value = seq
     Call 필드복사_기초자료_DB(wsIn, wsDB, newRow)
+    Call 품목복사_기초자료_DB(wsIn, wsItems, seq)
 
     wsIn.Range("H1").Value = seq
     If showMessage Then MsgBox "저장되었습니다. (순번 " & seq & ")", vbInformation
@@ -152,9 +227,11 @@ End Sub
 
 Sub 수정하기()
     If Not 필수값검증() Then Exit Sub
-    Dim wsIn As Worksheet, wsDB As Worksheet
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
+    Set wsItems = Sheets("DB_품목")
+    If Not 품목행검증(wsIn, True) Then Exit Sub
 
     Dim seq As Variant
     seq = wsIn.Range("H1").Value
@@ -169,6 +246,7 @@ Sub 수정하기()
         Exit Sub
     End If
     Call 필드복사_기초자료_DB(wsIn, wsDB, r)
+    Call 품목복사_기초자료_DB(wsIn, wsItems, CLng(seq))
     MsgBox "수정되었습니다. (순번 " & seq & ")", vbInformation
 End Sub
 
@@ -180,9 +258,10 @@ Sub 불러오기()
         MsgBox "숫자를 입력하세요.", vbExclamation
         Exit Sub
     End If
-    Dim wsIn As Worksheet, wsDB As Worksheet
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
+    Set wsItems = Sheets("DB_품목")
     Dim r As Long
     r = CLng(seqStr) + 1
     If wsDB.Cells(r, 1).Value <> CLng(seqStr) Then
@@ -207,6 +286,18 @@ Sub 불러오기()
     wsIn.Range("C23").Value = wsDB.Cells(r, 17).Value
     wsIn.Range("C24").Value = wsDB.Cells(r, 18).Value
     wsIn.Range("C25").Value = wsDB.Cells(r, 19).Value
+    wsIn.Range("B29:D38").ClearContents
+    Dim itemRow As Long, inputRow As Long
+    For itemRow = 2 To wsItems.Cells(wsItems.Rows.Count, 1).End(xlUp).Row
+        If wsItems.Cells(itemRow, 1).Value = CLng(seqStr) Then
+            inputRow = 28 + CLng(wsItems.Cells(itemRow, 2).Value)
+            If inputRow >= 29 And inputRow <= 38 Then
+                wsIn.Cells(inputRow, 2).Value = wsItems.Cells(itemRow, 3).Value
+                wsIn.Cells(inputRow, 3).Value = wsItems.Cells(itemRow, 4).Value
+                wsIn.Cells(inputRow, 4).Value = wsItems.Cells(itemRow, 5).Value
+            End If
+        End If
+    Next itemRow
     wsIn.Range("H1").Value = CLng(seqStr)
     MsgBox "불러왔습니다. (순번 " & seqStr & ")", vbInformation
 End Sub
@@ -231,16 +322,19 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
     ReDim tmp(1 To lastRow)
     Dim cnt As Long
     cnt = 0
-    Dim skippedNotReady As Long, skippedDeferred As Long
+    Dim skippedNotReady As Long, skippedDeferred As Long, skippedTooManyItems As Long
     skippedNotReady = 0
     skippedDeferred = 0
+    skippedTooManyItems = 0
 
     Dim r As Long
     For r = 5 To lastRow
         If wsSel.Cells(r, 1).Value = True Then
             Dim status As String
             status = wsSel.Cells(r, 5).Value
-            If status = "Y" Then
+            If wsSel.Cells(r, 2).Value = "F-024" And Application.WorksheetFunction.CountA(Sheets("기초자료입력").Range("B35:B38")) > 0 Then
+                skippedTooManyItems = skippedTooManyItems + 1
+            ElseIf status = "Y" Then
                 cnt = cnt + 1
                 tmp(cnt) = wsSel.Cells(r, 6).Value
             ElseIf status = "D" Then
@@ -253,14 +347,14 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
 
     If cnt = 0 Then
         MsgBox "구현된 서식이 선택되지 않았습니다." & vbCrLf & _
-               "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건", vbExclamation
+               "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-024 6품목 초과: " & skippedTooManyItems & "건", vbExclamation
         선택된시트목록 = 0
         Exit Function
     End If
 
-    If skippedNotReady > 0 Or skippedDeferred > 0 Then
+    If skippedNotReady > 0 Or skippedDeferred > 0 Or skippedTooManyItems > 0 Then
         MsgBox "일부 선택 서식은 아직 준비되지 않아 제외합니다." & vbCrLf & _
-               "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건", vbInformation
+               "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-024 6품목 초과: " & skippedTooManyItems & "건", vbInformation
     End If
 
     ReDim outNames(1 To cnt)

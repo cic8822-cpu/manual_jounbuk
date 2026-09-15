@@ -68,9 +68,9 @@ try {
 
     # 4. 시트 목록
     L "시트 목록: $((@($wb.Worksheets) | ForEach-Object { $_.Name }) -join ', ')"
-    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', '서식선택_출력', 'F-007_구매요청기안문', 'F-024_단가비율표', '학교정보')
+    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', '서식선택_출력', 'F-007_구매요청기안문', 'F-024_단가비율표', '학교정보')
     $sheetNames = @($wb.Worksheets | ForEach-Object { $_.Name })
-    Assert-Check ($sheetNames.Count -eq 7 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) '필수 7개 시트가 모두 존재함'
+    Assert-Check ($sheetNames.Count -eq 8 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) '필수 8개 시트가 모두 존재함'
 
     # 5. A4 1쪽 자연 충족 재확인 (F-007, F-024)
     foreach ($sn in @("F-007_구매요청기안문","F-024_단가비율표")) {
@@ -111,6 +111,15 @@ try {
     $dbRow2B = $wsDB.Cells.Item(2,2).Value2
     L "DB 시트 2행 기록 확인: 순번=$dbRow2A, 학교명=$dbRow2B"
     Assert-Check ($dbRow2A -eq 1 -and $dbRow2B -eq '테스트초등학교') '저장하기()가 DB에 마스킹 테스트값을 기록함'
+    $wsItems = $wb.Worksheets.Item('DB_품목')
+    L "DB_품목 기록 확인: $($wsItems.Cells.Item(2, 1).Value2)/$($wsItems.Cells.Item(2, 3).Value2), $($wsItems.Cells.Item(3, 1).Value2)/$($wsItems.Cells.Item(3, 3).Value2)"
+    Assert-Check ($wsItems.Cells.Item(2, 1).Value2 -eq 1 -and $wsItems.Cells.Item(2, 3).Value2 -eq '동복 상의' -and $wsItems.Cells.Item(3, 1).Value2 -eq 1 -and $wsItems.Cells.Item(3, 3).Value2 -eq '동복 하의') '저장하기()가 복수 품목 반복행을 DB_품목에 기록함'
+    $wsIn.Range('B31:D31').ClearContents()
+    $wsIn.Range('B31').Value2 = '불완전 품목'
+    Assert-Check (-not [bool]$excel.Run('검증_품목행검증')) '수정 경로와 공유하는 품목 검증이 불완전 행을 거부함'
+    Invoke-ValidationMacro -macroName '검증_저장하기'
+    Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsDB.Cells.Item(3, 1).Value2)) '불완전 품목 행은 DB 저장이 거부됨'
+    $wsIn.Range('B31:D31').ClearContents()
 
     # F-007/F-024 수식이 HWPX 원문 대조 후 확정한 v2 배치에서 기초자료입력을 정상 참조하는지 확인
     $wsF7 = $wb.Worksheets.Item("F-007_구매요청기안문")
@@ -119,6 +128,7 @@ try {
     $wsF24 = $wb.Worksheets.Item("F-024_단가비율표")
     L "F-024 수량 합계(D15) 계산값: $($wsF24.Range('D15').Value2), 비율(E9/E10): $($wsF24.Range('E9').Value2)/$($wsF24.Range('E10').Value2)"
     Assert-Check ($wsF24.Range('D15').Value2 -eq 204 -and $wsF24.Range('E9').Text -eq '55.6%' -and $wsF24.Range('E10').Text -eq '44.4%') 'F-024 수량 합계와 단가비율이 입력값을 참조함'
+    Assert-Check ($wsF24.Range('C9').Value2 -eq '동복 상의' -and $wsF24.Range('C10').Value2 -eq '동복 하의') 'F-024 품목명이 입력 반복행을 참조함'
 
     # 7. 서식선택_출력 체크 + PDF 내보내기 매크로 테스트
     $wsSel = $wb.Worksheets.Item("서식선택_출력")
@@ -158,6 +168,9 @@ try {
     Invoke-ValidationMacro -macroName '검증_초기화'
     $wsDB2 = $wb.Worksheets.Item("DB")
     $wsDB2.Range("A2:T2").ClearContents()
+    $wb.Worksheets.Item('DB_품목').Range('A2:F100').ClearContents()
+    $missingInputAccepted = [bool]$excel.Run('검증_필수값검증')
+    Assert-Check (-not $missingInputAccepted) '필수값이 비어 있으면 저장 검증이 거부됨'
     L "테스트 데이터 정리(기초자료입력 초기화, DB 2행 삭제) 완료"
 
     L '테스트 데이터 정리 완료(검증 사본만 변경, 배포본 저장 없음)'
