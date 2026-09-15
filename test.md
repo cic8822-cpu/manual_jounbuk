@@ -1,6 +1,6 @@
 # 테스트 계획 및 결과 — 교복구매 길라잡이
 
-- **자동 검사 상태**: `PASS — P3-01 Excel 기반 완료 게이트`
+- **자동 검사 상태**: `BLOCKED — P3-01 기준 XLSM 수준 기능 미구현`
 - **최종 실행일**: 2026-09-15
 - **자동 검사 명령**: `.claude/hooks/verify-phase.ps1`
 
@@ -55,6 +55,7 @@ P2에서 대표 3종 사본을 대상으로 값 치환, 재열기, `validate`, P
 | X-03 | 서식 선택 목록 | F-001~F-052가 52행으로 존재함 | PASS |
 | X-04 | 수식 오류 | 사용 범위의 `#REF!` 0건 | PASS |
 | X-05 | 외부 의존성 | Excel LinkSources·OOXML externalLinks·connections 0건 | PASS |
+| X-06 | 기준 XLSM 기능 수준 | 기준 XLSM과 비교해 실무 입력 화면·서식 조판·자동 반영·선택 출력 기능을 제공함 | FAIL |
 
 ## 6. P1-04 범위·대표 POC 결정 검사
 
