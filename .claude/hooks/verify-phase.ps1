@@ -289,6 +289,34 @@ if ($null -ne $gate -and $gate.activePhase -eq 'P1-03') {
     }
 }
 
+if ($null -ne $gate -and $gate.activePhase -eq 'P1-04') {
+    $decisionPath = Join-Path $root '결정사항.md'
+    if (-not (Test-Path -LiteralPath $decisionPath -PathType Leaf)) {
+        $failures.Add('P1-04 결정 문서 누락: 결정사항.md')
+    } else {
+        $decisionContent = Get-Content -LiteralPath $decisionPath -Raw -Encoding UTF8
+        foreach ($requiredText in @(
+            'F-001~F-052, 총 52종',
+            'F-053~F-057, 총 5종',
+            '총 57종',
+            'F-007 교복구매 구매 요청',
+            'F-024 품목별 단가 비율표',
+            'F-013 교복 디자인 및 규격서',
+            '개인정보 가능 문서 F-029, F-047, F-050은 대표 POC에서 제외',
+            'Kordoc `validate`, 생성본 재열기, 한컴 수동 열기, PDF 비교, 담당자 확인 기록'
+        )) {
+            if (-not $decisionContent.Contains($requiredText)) {
+                $failures.Add("P1-04 결정 근거 누락: $requiredText")
+            }
+        }
+
+        $approvalRows = [regex]::Matches($decisionContent, '(?m)^\|\s*(?:52종 출력 \+ 5종 읽기 전용 범위|F-007 단순 기안문 POC|F-024 반복·계산 문서 POC|F-013 표·이미지 복합 문서 POC|P2 한컴·PDF 수동 검토 책임)\s*\|[^|]*\|\s*(APPROVED)\s*\|')
+        if ($approvalRows.Count -ne 5) {
+            $failures.Add('P1-04 업무 담당 승인 기록이 5건 모두 APPROVED가 아님')
+        }
+    }
+}
+
 $logPath = Join-Path $root '로그.md'
 if (Test-Path -LiteralPath $logPath -PathType Leaf) {
     $logContent = Get-Content -LiteralPath $logPath -Raw
