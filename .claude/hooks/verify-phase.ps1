@@ -132,7 +132,7 @@ if ($null -ne $gate) {
             $failures.Add("원본 무결성 검사 대상 누락: $($sourceHash.path)")
             continue
         }
-        $actualHash = (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash
+        $actualHash = (Microsoft.PowerShell.Utility\Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash
         if ($actualHash -ne ([string]$sourceHash.sha256).ToUpperInvariant()) {
             $failures.Add("원본 SHA-256 불일치: $($sourceHash.path)")
         }
@@ -317,6 +317,63 @@ if ($null -ne $gate -and $gate.activePhase -eq 'P1-04') {
     }
 }
 
+# PowerShell 스크립트는 실행 전에 구문 오류를 차단한다. PSScriptAnalyzer가 없는 환경에서도
+# 표준 PowerShell 파서를 사용하므로 린트 공백이 완료 판정으로 새지 않는다.
+foreach ($relativeScriptPath in @(
+    'scripts\\verify_excel_v1.ps1',
+    'scripts\\build_excel_v1_structure.ps1',
+    'scripts\\build_excel_v1_vba.ps1'
+)) {
+    $scriptPath = Join-Path $root $relativeScriptPath
+    if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
+        $failures.Add("P3 스크립트 누락: $relativeScriptPath")
+        continue
+    }
+    $parseTokens = $null
+    $parseErrors = $null
+    [void][System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$parseTokens, [ref]$parseErrors)
+    if (@($parseErrors).Count -gt 0) {
+        $failures.Add("PowerShell 구문 검사 실패: $relativeScriptPath — $($parseErrors[0].Message)")
+    }
+}
+
+$scriptAnalyzer = Get-Module -ListAvailable -Name PSScriptAnalyzer | Select-Object -First 1
+if ($null -eq $scriptAnalyzer) {
+    $failures.Add('PSScriptAnalyzer가 설치되지 않아 PowerShell 린트를 수행할 수 없음')
+} else {
+    Import-Module PSScriptAnalyzer -ErrorAction Stop
+    foreach ($relativeScriptPath in @(
+        'scripts\\verify_excel_v1.ps1',
+        'scripts\\build_excel_v1_structure.ps1',
+        'scripts\\build_excel_v1_vba.ps1',
+        '.claude\\hooks\\verify-phase.ps1'
+    )) {
+        $scriptPath = Join-Path $root $relativeScriptPath
+        if (Test-Path -LiteralPath $scriptPath -PathType Leaf) {
+            $lintFindings = @(Invoke-ScriptAnalyzer -Path $scriptPath -Severity Error,Warning)
+            if ($lintFindings.Count -gt 0) {
+                $failures.Add("PowerShell 린트 실패: $relativeScriptPath — $($lintFindings[0].RuleName) (line $($lintFindings[0].Line))")
+            }
+        }
+    }
+}
+
+# P3는 Markdown 상태만 PASS/DONE으로 바꿔서는 완료할 수 없다. 실제 XLSM 검증 스크립트가
+# 사본에서 Excel COM·PDF·수식·외부 의존성을 재검증해 0으로 종료해야 한다.
+if ($null -ne $gate -and $gate.activePhase -eq 'P3-01') {
+    $excelVerifier = Join-Path $root 'scripts\\verify_excel_v1.ps1'
+    if (Test-Path -LiteralPath $excelVerifier -PathType Leaf) {
+        $excelVerifierOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $excelVerifier 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            $failures.Add("P3 실제 XLSM 검증 실패: $($excelVerifierOutput -join ' ')")
+        }
+        $excelVerifierLog = Join-Path $root '_workspace\\03_excel\\verify_v1_log.txt'
+        if (-not (Test-Path -LiteralPath $excelVerifierLog -PathType Leaf) -or -not ((Get-Content -LiteralPath $excelVerifierLog -Raw -Encoding UTF8) -match 'PASS: Excel v1 검증 전체 통과')) {
+            $failures.Add('P3 실제 XLSM 검증 로그에 최종 PASS 증빙이 없음')
+        }
+    }
+}
+
 $logPath = Join-Path $root '로그.md'
 if (Test-Path -LiteralPath $logPath -PathType Leaf) {
     $logContent = Get-Content -LiteralPath $logPath -Raw
@@ -330,8 +387,14 @@ if (Test-Path -LiteralPath $logPath -PathType Leaf) {
 
 Push-Location -LiteralPath $root
 try {
+    # Git의 CRLF 안내는 stderr로만 출력되고 검사 실패가 아니다. PowerShell의 Stop 설정이
+    # 이를 NativeCommandError로 승격하지 않도록 종료 코드를 명시적으로 판정한다.
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     $diffCheck = & git diff --check 2>&1
-    if ($LASTEXITCODE -ne 0) {
+    $gitDiffExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $previousErrorActionPreference
+    if ($gitDiffExitCode -ne 0) {
         $failures.Add("git diff --check 실패: $($diffCheck -join ' ')")
     }
 } finally {

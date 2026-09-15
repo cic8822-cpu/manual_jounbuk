@@ -3,30 +3,56 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $targetPath = Join-Path $root 'artifacts\excel\교복구매_길라잡이_Excel_v1.xlsm'
 $logPath = Join-Path $root '_workspace\03_excel\verify_v1_log.txt'
+$validationDirectory = Join-Path $root 'artifacts\excel\_validation'
+$validationPath = Join-Path $validationDirectory '교복구매_길라잡이_Excel_v1.xlsm'
+$legacyValidationPath = Join-Path $root 'artifacts\excel\~검증용_교복구매_길라잡이_Excel_v1.xlsm'
+$failures = [System.Collections.Generic.List[string]]::new()
 
-if (Test-Path $logPath) { Remove-Item $logPath }
+if (-not (Test-Path -LiteralPath $targetPath -PathType Leaf)) {
+    throw "검증 대상 XLSM이 없습니다: $targetPath"
+}
+
+if (Test-Path -LiteralPath $logPath) { Remove-Item -LiteralPath $logPath -Force }
+if (Test-Path -LiteralPath $legacyValidationPath) { Remove-Item -LiteralPath $legacyValidationPath -Force }
+if (Test-Path -LiteralPath $validationDirectory) { Remove-Item -LiteralPath $validationDirectory -Recurse -Force }
+New-Item -ItemType Directory -Path $validationDirectory -Force | Out-Null
 function L($s) {
     [System.IO.File]::AppendAllText($logPath, "$s`r`n", [System.Text.UTF8Encoding]::new($false))
 }
+function Assert-Check([bool]$condition, [string]$message) {
+    if ($condition) {
+        L "PASS: $message"
+    } else {
+        L "FAIL: $message"
+        $script:failures.Add($message)
+    }
+}
+function Invoke-ValidationMacro([string]$macroName) {
+    $excel.Run($macroName)
+}
+
+Copy-Item -LiteralPath $targetPath -Destination $validationPath -Force
 $excel = New-Object -ComObject Excel.Application
 $excel.Visible = $false
 $excel.DisplayAlerts = $false
 
 $wb = $null
 try {
-    $wb = $excel.Workbooks.Open($targetPath, [Type]::Missing, $false)
+    $wb = $excel.Workbooks.Open($validationPath, [Type]::Missing, $false)
 
     # 1. 외부 링크
     $links = $wb.LinkSources(1)  # xlExcelLinks
-    if ($links -eq $null) {
+    if ($null -eq $links) {
         L "외부 링크(xlExcelLinks): 0건"
     } else {
         L "외부 링크(xlExcelLinks): $($links.Count)건 -- $($links -join '; ')"
     }
+    Assert-Check ($null -eq $links -or $links.Count -eq 0) '외부 링크가 0건임'
 
     # 2. 외부 연결(Connections)
     $connCount = $wb.Connections.Count
     L "외부 연결(Connections): $connCount 건"
+    Assert-Check ($connCount -eq 0) '외부 연결이 0건임'
 
     # 3. #REF! 이름정의
     $refCount = 0
@@ -38,9 +64,13 @@ try {
         } catch { $refCount++; $refNames += $n.Name }
     }
     L "#REF! 이름정의: $refCount 건 $(if($refNames.Count -gt 0){'-- ' + ($refNames -join ', ')})"
+    Assert-Check ($refCount -eq 0) '#REF! 이름 정의가 0건임'
 
     # 4. 시트 목록
     L "시트 목록: $((@($wb.Worksheets) | ForEach-Object { $_.Name }) -join ', ')"
+    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', '서식선택_출력', 'F-007_구매요청기안문', 'F-024_단가비율표', '학교정보')
+    $sheetNames = @($wb.Worksheets | ForEach-Object { $_.Name })
+    Assert-Check ($sheetNames.Count -eq 7 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) '필수 7개 시트가 모두 존재함'
 
     # 5. A4 1쪽 자연 충족 재확인 (F-007, F-024)
     foreach ($sn in @("F-007_구매요청기안문","F-024_단가비율표")) {
@@ -49,6 +79,7 @@ try {
         $vb = $ws.VPageBreaks.Count
         $zoom = $ws.PageSetup.Zoom
         L "$sn : Zoom=$zoom, HPageBreaks=$hb, VPageBreaks=$vb => $(if($hb -eq 0 -and $vb -eq 0){'A4 1쪽 자연 충족 OK'}else{'FAIL - 1쪽 초과'})"
+        Assert-Check ($zoom -eq 100 -and $hb -eq 0 -and $vb -eq 0) "$sn A4 1쪽 자연 배율 출력"
     }
 
     # 6. 매크로 실행 테스트 (마스킹 테스트값 사용 — 실제 업체/개인정보 아님)
@@ -65,25 +96,29 @@ try {
     $wsIn.Range("B30").Value2 = "동복 하의"
     $wsIn.Range("C30").Value2 = 100
     $wsIn.Range("D30").Value2 = 40000
+    $excel.CalculateFullRebuild()
 
     try {
-        $excel.SendKeys("~", $false)
-        $excel.Run("저장하기")
+        Invoke-ValidationMacro -macroName '검증_저장하기'
         L "매크로 저장하기(): 정상 실행"
     } catch {
-        L "매크로 저장하기() 실패: $($_.Exception.Message)"
+        $failures.Add("매크로 저장하기() 실패: $($_.Exception.Message)")
+        L "FAIL: 매크로 저장하기() 실패: $($_.Exception.Message)"
     }
 
     $wsDB = $wb.Worksheets.Item("DB")
     $dbRow2A = $wsDB.Cells.Item(2,1).Value2
     $dbRow2B = $wsDB.Cells.Item(2,2).Value2
     L "DB 시트 2행 기록 확인: 순번=$dbRow2A, 학교명=$dbRow2B"
+    Assert-Check ($dbRow2A -eq 1 -and $dbRow2B -eq '테스트초등학교') '저장하기()가 DB에 마스킹 테스트값을 기록함'
 
-    # F-007/F-024 수식이 기초자료입력을 정상 참조하는지 값 확인
+    # F-007/F-024 수식이 HWPX 원문 대조 후 확정한 v2 배치에서 기초자료입력을 정상 참조하는지 확인
     $wsF7 = $wb.Worksheets.Item("F-007_구매요청기안문")
-    L "F-007 제목 셀(C8) 계산값: $($wsF7.Range('C8').Value2)"
+    L "F-007 제목 셀(C9) 계산값: $($wsF7.Range('C9').Value2)"
+    Assert-Check ($wsF7.Range('C9').Value2 -eq '2026학년도 동복 학교주관구매 요청') 'F-007 공통 제목이 입력값을 참조함'
     $wsF24 = $wb.Worksheets.Item("F-024_단가비율표")
-    L "F-024 합계(F18) 계산값: $($wsF24.Range('F18').Value2)"
+    L "F-024 수량 합계(D15) 계산값: $($wsF24.Range('D15').Value2), 비율(E9/E10): $($wsF24.Range('E9').Value2)/$($wsF24.Range('E10').Value2)"
+    Assert-Check ($wsF24.Range('D15').Value2 -eq 204 -and $wsF24.Range('E9').Text -eq '55.6%' -and $wsF24.Range('E10').Text -eq '44.4%') 'F-024 수량 합계와 단가비율이 입력값을 참조함'
 
     # 7. 서식선택_출력 체크 + PDF 내보내기 매크로 테스트
     $wsSel = $wb.Worksheets.Item("서식선택_출력")
@@ -95,44 +130,50 @@ try {
             $wsSel.Cells.Item($r, 1).Value2 = $true
         }
     }
+    $pdfStartTime = Get-Date
     try {
-        $excel.SendKeys("~", $false)
-        $excel.SendKeys("~", $false)
-        $excel.Run("선택서식_PDF저장")
+        Invoke-ValidationMacro -macroName '검증_선택서식_PDF저장'
         L "매크로 선택서식_PDF저장(): 정상 실행"
     } catch {
-        L "매크로 선택서식_PDF저장() 실패: $($_.Exception.Message)"
+        $failures.Add("매크로 선택서식_PDF저장() 실패: $($_.Exception.Message)")
+        L "FAIL: 매크로 선택서식_PDF저장() 실패: $($_.Exception.Message)"
     }
 
-    $outputDir = Join-Path $root 'artifacts\excel\output'
+    $outputDir = Join-Path $validationDirectory 'output'
     if (Test-Path $outputDir) {
-        $pdfs = Get-ChildItem $outputDir -Filter "*.pdf" | Sort-Object LastWriteTime -Descending
+        $pdfs = Get-ChildItem $outputDir -Filter "*.pdf" | Where-Object { $_.LastWriteTime -ge $pdfStartTime } | Sort-Object LastWriteTime -Descending
         if ($pdfs.Count -gt 0) {
             L "PDF 생성 확인: $($pdfs[0].FullName) ($([math]::Round($pdfs[0].Length/1024,1)) KB)"
+            Assert-Check ($pdfs[0].Length -gt 0) '선택 서식 PDF가 비어 있지 않음'
         } else {
-            L "PDF 생성 실패: output 폴더에 PDF 없음"
+            $failures.Add('PDF 생성 실패: output 폴더에 PDF 없음')
+            L 'FAIL: PDF 생성 실패: output 폴더에 PDF 없음'
         }
     } else {
-        L "PDF 생성 실패: output 폴더 자체가 없음"
+        $failures.Add('PDF 생성 실패: output 폴더 자체가 없음')
+        L 'FAIL: PDF 생성 실패: output 폴더 자체가 없음'
     }
 
     # 8. 매크로 실행 후 테스트값 원복(초기화) — 배포본에 테스트 데이터가 남지 않도록
-    $excel.SendKeys("~", $false)
-    $excel.Run("초기화")
+    Invoke-ValidationMacro -macroName '검증_초기화'
     $wsDB2 = $wb.Worksheets.Item("DB")
     $wsDB2.Range("A2:T2").ClearContents()
     L "테스트 데이터 정리(기초자료입력 초기화, DB 2행 삭제) 완료"
 
-    $wb.Save()
-    L "검증 후 저장 완료(테스트 데이터 제거 상태로 저장)"
+    L '테스트 데이터 정리 완료(검증 사본만 변경, 배포본 저장 없음)'
 
 } finally {
-    if ($wb) { $wb.Close($true) }
+    if ($wb) { $wb.Close($false) }
     $excel.Quit()
     if ($wb) { [System.Runtime.Interopservices.Marshal]::ReleaseComObject($wb) | Out-Null }
     [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
     [GC]::Collect()
     [GC]::WaitForPendingFinalizers()
+    if (Test-Path -LiteralPath $validationDirectory) { Remove-Item -LiteralPath $validationDirectory -Recurse -Force }
 }
 
-[System.IO.File]::WriteAllText($logPath, $log.ToString(), [System.Text.UTF8Encoding]::new($false))
+if ($failures.Count -gt 0) {
+    throw ('Excel v1 검증 실패: ' + ($failures -join '; '))
+}
+
+L 'PASS: Excel v1 검증 전체 통과'

@@ -28,7 +28,7 @@ try {
             $existing = $vbproj.VBComponents.Item($nm)
             $vbproj.VBComponents.Remove($existing)
             L "기존 모듈 $nm 제거 후 재생성"
-        } catch { }
+        } catch { L "기존 모듈 $nm 없음" }
     }
 
     $modInput = $vbproj.VBComponents.Add(1)  # vbext_ct_StdModule
@@ -37,6 +37,14 @@ try {
 Option Explicit
 
 Sub 초기화()
+    Call 초기화_실행(True)
+End Sub
+
+Public Sub 검증_초기화()
+    Call 초기화_실행(False)
+End Sub
+
+Private Sub 초기화_실행(ByVal showMessage As Boolean)
     With Sheets("기초자료입력")
         .Range("C4").Value = ""
         .Range("C5").Value = ""
@@ -59,7 +67,7 @@ Sub 초기화()
         .Range("B29:D38").ClearContents
         .Range("H1").Value = ""
     End With
-    MsgBox "기초자료가 초기화되었습니다.", vbInformation
+    If showMessage Then MsgBox "기초자료가 초기화되었습니다.", vbInformation
 End Sub
 
 Function 필수값검증() As Boolean
@@ -111,6 +119,14 @@ Private Sub 필드복사_기초자료_DB(wsIn As Worksheet, wsDB As Worksheet, r
 End Sub
 
 Sub 저장하기()
+    Call 저장하기_실행(True)
+End Sub
+
+Public Sub 검증_저장하기()
+    Call 저장하기_실행(False)
+End Sub
+
+Private Sub 저장하기_실행(ByVal showMessage As Boolean)
     If Not 필수값검증() Then Exit Sub
     Dim wsIn As Worksheet, wsDB As Worksheet
     Set wsIn = Sheets("기초자료입력")
@@ -131,7 +147,7 @@ Sub 저장하기()
     Call 필드복사_기초자료_DB(wsIn, wsDB, newRow)
 
     wsIn.Range("H1").Value = seq
-    MsgBox "저장되었습니다. (순번 " & seq & ")", vbInformation
+    If showMessage Then MsgBox "저장되었습니다. (순번 " & seq & ")", vbInformation
 End Sub
 
 Sub 수정하기()
@@ -265,6 +281,14 @@ Sub 선택서식_인쇄미리보기()
 End Sub
 
 Sub 선택서식_PDF저장()
+    Call 선택서식_PDF저장_실행(True)
+End Sub
+
+Public Sub 검증_선택서식_PDF저장()
+    Call 선택서식_PDF저장_실행(False)
+End Sub
+
+Private Sub 선택서식_PDF저장_실행(ByVal showMessage As Boolean)
     Dim names() As String
     Dim n As Long
     n = 선택된시트목록(names)
@@ -280,7 +304,7 @@ Sub 선택서식_PDF저장()
     ThisWorkbook.Sheets(names).Select
     ActiveSheet.ExportAsFixedFormat Type:=xlTypePDF, Filename:=fileName, Quality:=xlQualityStandard, IncludeDocProperties:=True, IgnorePrintAreas:=False, OpenAfterPublish:=False
 
-    MsgBox "PDF로 저장되었습니다:" & vbCrLf & fileName, vbInformation
+    If showMessage Then MsgBox "PDF로 저장되었습니다:" & vbCrLf & fileName, vbInformation
 End Sub
 '@
     $codeOutput = $codeOutput -replace "`r`n", "`r" -replace "`n", "`r"
@@ -309,7 +333,7 @@ End Sub
         $procCount = $cm.ProcCountLines($procName, 0)
         $cm.DeleteLines($startLine, $procCount)
         L "기존 Workbook_Open 프로시저 제거 후 재생성"
-    } catch { }
+    } catch { L '기존 Workbook_Open 프로시저 없음' }
 
     $codeThisWb = @'
 
@@ -331,7 +355,7 @@ End Sub
     # ---- Form 컨트롤 버튼 배치 (재실행 대비: 동일 이름 기존 버튼 제거) ----
     $wsIn = $wb.Worksheets.Item("기초자료입력")
     foreach ($nm in @("btn초기화","btn저장하기","btn수정하기","btn불러오기")) {
-        try { $wsIn.Buttons($nm).Delete() } catch { }
+        try { $wsIn.Buttons($nm).Delete() } catch { L "기존 버튼 $nm 없음" }
     }
     $btnDefs = @(
         @{name="btn초기화"; caption="초기화"; macro="초기화"; left=520; top=10},
@@ -349,7 +373,7 @@ End Sub
 
     $wsSel = $wb.Worksheets.Item("서식선택_출력")
     foreach ($nm in @("btn인쇄미리보기","btnPDF저장")) {
-        try { $wsSel.Buttons($nm).Delete() } catch { }
+        try { $wsSel.Buttons($nm).Delete() } catch { L "기존 버튼 $nm 없음" }
     }
     $btn1 = $wsSel.Buttons().Add(300, 10, 160, 24)
     $btn1.Caption = "선택 서식 인쇄 미리보기"

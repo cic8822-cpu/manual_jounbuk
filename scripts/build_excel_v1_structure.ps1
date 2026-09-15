@@ -8,7 +8,6 @@ $outPath = Join-Path $outDir '교복구매_길라잡이_Excel_v1.xlsm'
 $sourcePath = Join-Path $root '20230808_용역계약갈라잡이(디깅모멘텀)_이행원.xlsm'
 $logPath = Join-Path $root '_workspace\03_excel\build_structure_log.txt'
 
-$cmA4Margin = 1  # cm -> will convert to points (1cm = 28.3465pt)
 function CmToPt($cm) { return [double]$cm * 28.3465 }
 
 $excel = New-Object -ComObject Excel.Application
@@ -407,6 +406,62 @@ try {
     $vb = $ws.VPageBreaks.Count
     L "F-024 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=$hb, VPageBreaks=$vb (둘 다 0이면 A4 1쪽 자연 충족)"
     L "F-024_단가비율표 시트 작성 완료"
+
+    # ---- 7a. F-007/F-024 v2 원문 대조 반영 ----
+    # 위의 초안은 P3-01 초기 구조이다. 아래에서 2026-09-15 HWPX 대조 결과를
+    # 반영한 최종 v2 레이아웃으로 두 시트를 다시 구성한다. 이 단계가 없으면
+    # 빌더를 재실행했을 때 배포본의 원문 대조 수식/표 구조가 되돌아간다.
+    $notice = "[검토중 — 담당자 최종 확인 후 사용] 상세 변경 이력: _workspace/03_excel/F-007_F024_수정후_재대조.md"
+
+    $ws = $wsF7
+    $ws.Cells.Clear()
+    $ws.Range("A1").Value2 = $notice
+    $ws.Range("A1").Font.Size = 8
+    $ws.Range("A1").Font.Color = 255
+    $ws.Range("B3:H3").Merge() | Out-Null
+    $ws.Range("B3").Value2 = "교복 학교주관구매 구매 요청(안)"
+    $ws.Range("B3").Font.Size = 16; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108
+    $ws.Range("B5").Value2 = "문서번호"; $ws.Range("C5").Formula = '=IF(기초자료입력!C9<>"",기초자료입력!C9,"")'
+    $ws.Range("E5").Value2 = "시행일자"; $ws.Range("F5").Formula = '=IF(기초자료입력!C8<>"",TEXT(기초자료입력!C8,"yyyy-mm-dd"),"")'
+    $ws.Range("C7:H7").Merge() | Out-Null; $ws.Range("B7").Value2 = "수  신"; $ws.Range("C7").Formula = '=IF(기초자료입력!C21<>"",기초자료입력!C21,"내부결재")'
+    $ws.Range("C8:H8").Merge() | Out-Null; $ws.Range("B8").Value2 = "(경유)"
+    $ws.Range("C9:H9").Merge() | Out-Null; $ws.Range("B9").Value2 = "제  목"; $ws.Range("C9").Formula = '=IF(기초자료입력!C22<>"",기초자료입력!C22,기초자료입력!C5&"학년도 "&기초자료입력!C12&" 구매 요청")'; $ws.Range("C9").Font.Bold = $true
+    $ws.Range("C11:H11").Merge() | Out-Null; $ws.Range("B11").Value2 = "1. 관련："; $ws.Range("C11").Formula = '=IF(기초자료입력!C23<>"",기초자료입력!C23,"")'
+    $ws.Range("B13:H13").Merge() | Out-Null; $ws.Range("B13").Formula = '="2. "&기초자료입력!C5&"학년도 "&기초자료입력!C12&IF(기초자료입력!C12="","을",IF(MOD(UNICODE(RIGHT(기초자료입력!C12,1))-44032,28)=0,"를","을"))&" 위하여 교복 구매 계획에 대한 학교운영위원회 심의가 완료되어, 아래와 같이 구매 요청을 하고자 합니다."'; $ws.Range("B13").WrapText = $true
+    $labelsF7 = @(@("B15","가. 대상 및 수량"), @("B16","나. 예상단가"), @("B17","다. 사양내역"), @("B18","라. 납품기한"), @("B20","붙임"))
+    foreach ($item in $labelsF7) { $ws.Range($item[0]).Value2 = $item[1] }
+    foreach ($r in 15,16,17,18,20) { $ws.Range("C$r:H$r").Merge() | Out-Null }
+    $ws.Range("C15").Formula = '=기초자료입력!C5&"학년도 신입생 중 학교주관구매 참여자 "&IF(기초자료입력!C16<>"",기초자료입력!C16,"○○")&"명"'
+    $ws.Range("C16").Formula = '="동복 "&IF(SUM(기초자료입력!D29:D32)=0,"○○○,○○○",TEXT(SUM(기초자료입력!D29:D32),"#,##0"))&"원, 하복 "&IF(SUM(기초자료입력!D33:D34)=0,"○○,○○○",TEXT(SUM(기초자료입력!D33:D34),"#,##0"))&"원"'
+    $ws.Range("C17").Value2 = "붙임 참조"
+    $ws.Range("C18").Formula = '=IF(기초자료입력!C17<>"",IFERROR(TEXT(기초자료입력!C17,"yyyy-mm-dd"),기초자료입력!C17),"")'
+    $ws.Range("C20").Formula = '=IF(기초자료입력!C24<>"",기초자료입력!C24,"교복 사양서 1부")&"  끝."'
+    $ws.Range("F23").Value2 = "담당"; $ws.Range("G23").Value2 = "협조자"; $ws.Range("H23").Value2 = "교장"
+    $ws.Range("B24").Value2 = "시행"; $ws.Range("C24:E24").Merge() | Out-Null; $ws.Range("C24").Formula = '=IF(기초자료입력!C9<>"",기초자료입력!C9,"")'; $ws.Range("F24").Value2 = "접수"; $ws.Range("G24:H24").Merge() | Out-Null
+    $ws.Range("B25").Value2 = "우편번호"; $ws.Range("D25").Value2 = "주소"; $ws.Range("E25:H25").Merge() | Out-Null
+    $ws.Range("B26").Value2 = "전화"; $ws.Range("D26").Value2 = "전송(팩스)"; $ws.Range("F26").Value2 = "이메일"; $ws.Range("G26:H26").Merge() | Out-Null
+    $ws.Range("B5:H26").Font.Size = 10; $ws.Range("B5,E5,B7,B8,B9,B11,B15,B16,B17,B18,B20,B24,F24,B25,D25,B26,D26,F26").Font.Bold = $true
+    $ws.Range("B5:H26").Borders.LineStyle = 1
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 11; for ($c = 3; $c -le 8; $c++) { $ws.Columns.Item($c).ColumnWidth = 9 }
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 1.27; $ps.BottomMargin = CmToPt 1.27; $ps.LeftMargin = CmToPt 1.27; $ps.RightMargin = CmToPt 1.27; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$A`$1:`$H`$26"
+
+    $ws = $wsF24
+    $ws.Cells.Clear()
+    $ws.Range("A1").Value2 = $notice
+    $ws.Range("A1").Font.Size = 8; $ws.Range("A1").Font.Color = 255
+    $ws.Range("B3:G3").Merge() | Out-Null; $ws.Range("B3").Value2 = "[서식 7] 교복 품목별 단가 비율표"; $ws.Range("B3").Font.Size = 16; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108
+    $ws.Range("B4:G4").Merge() | Out-Null; $ws.Range("B4").Value2 = "(업체 제출양식)"; $ws.Range("B4").HorizontalAlignment = -4108
+    $ws.Range("B6").Value2 = "학교명"; $ws.Range("C6").Formula = '=IF(기초자료입력!C4<>"",기초자료입력!C4,"")'; $ws.Range("D6").Value2 = "학년도"; $ws.Range("E6").Formula = '=IF(기초자료입력!C5<>"",기초자료입력!C5,"")'; $ws.Range("F6").Value2 = "구매명"; $ws.Range("G6").Formula = '=IF(기초자료입력!C12<>"",기초자료입력!C12,"")'
+    $ws.Range("B8:C8").Merge() | Out-Null; $ws.Range("B8").Value2 = "품목"; $ws.Range("D8").Value2 = "수량"; $ws.Range("E8").Value2 = "단가비율(%)"; $ws.Range("F8:G8").Merge() | Out-Null; $ws.Range("F8").Value2 = "비고"
+    $ws.Range("B9:B12").Merge() | Out-Null; $ws.Range("B9").Value2 = "동복"; $ws.Range("B13:B14").Merge() | Out-Null; $ws.Range("B13").Value2 = "하복"; $ws.Range("F9:G14").Merge() | Out-Null; $ws.Range("F9").Value2 = "품목별 단가 비율 기준과 ±3% 이상 차이가 나는 품목이 있을 시 기준 미충족"; $ws.Range("F9").WrapText = $true
+    $itemsF24 = @("후드 점퍼","집업티","맨투맨티","긴바지(치마)","반팔티","반바지")
+    for ($i = 0; $i -lt 6; $i++) { $r = 9 + $i; $src = 29 + $i; $ws.Range("C$r").Value2 = $itemsF24[$i]; $ws.Range("D$r").Formula = "=IF(기초자료입력!C$src<>`"`",기초자료입력!C$src,1)"; $ws.Range("E$r").Formula = "=IF(SUM(기초자료입력!`$D`$29:`$D`$34)=0,`"`",TEXT(기초자료입력!D$src/SUM(기초자료입력!`$D`$29:`$D`$34)*100,`"0.0`")&`"%`")" }
+    $ws.Range("B15:C15").Merge() | Out-Null; $ws.Range("B15").Value2 = "합계"; $ws.Range("D15").Formula = "=SUM(D9:D14)"; $ws.Range("E15").Formula = '="100%"'; $ws.Range("F15:G15").Merge() | Out-Null
+    $ws.Range("B17:G17").Merge() | Out-Null; $ws.Range("B17").Value2 = "20○○년    월    일"; $ws.Range("B18:G18").Merge() | Out-Null; $ws.Range("B18").Value2 = "제안자 성  명                    (서명 또는 날인)"; $ws.Range("B19:G19").Merge() | Out-Null; $ws.Range("B19").Formula = '=IF(기초자료입력!C4<>"",기초자료입력!C4,"○○○○학교")&"장 귀하"'
+    $ws.Range("B6:G6,B8:G15").Borders.LineStyle = 1; $ws.Range("B8:G8").Font.Bold = $true; $ws.Range("B8:G8").HorizontalAlignment = -4108; $ws.Range("B15:G15").Font.Bold = $true
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 9; $ws.Columns.Item("C").ColumnWidth = 16; $ws.Columns.Item("D").ColumnWidth = 9; $ws.Columns.Item("E").ColumnWidth = 14; $ws.Columns.Item("F").ColumnWidth = 17; $ws.Columns.Item("G").ColumnWidth = 10; $ws.Range("B3:G19").Font.Size = 10
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 1.27; $ps.BottomMargin = CmToPt 1.27; $ps.LeftMargin = CmToPt 1.27; $ps.RightMargin = CmToPt 1.27; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$A`$1:`$G`$19"
+    L "F-007/F-024 v2 원문 대조 레이아웃 및 수식 재적용 완료"
 
     # ---- 8. 학교정보 (원본 공개 데이터 표본 복사 — 학생·학부모 개인정보 아님) ----
     $wbSrc = $excel.Workbooks.Open($sourcePath, [Type]::Missing, $true)
