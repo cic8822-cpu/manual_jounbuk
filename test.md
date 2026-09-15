@@ -1,6 +1,6 @@
 # 테스트 계획 및 결과 — 교복구매 길라잡이
 
-- **자동 검사 상태**: `PASS — P1-03 완료 게이트`
+- **자동 검사 상태**: `PASS — P3-01 Excel 기반 완료 게이트`
 - **최종 실행일**: 2026-09-15
 - **자동 검사 명령**: `.claude/hooks/verify-phase.ps1`
 
@@ -45,6 +45,16 @@
 ## 5. HWPX POC 테스트
 
 P2에서 대표 3종 사본을 대상으로 값 치환, 재열기, `validate`, PDF 비교, 한컴 수동 열기 결과를 추가함.
+
+## 5.1 P3-01 Excel MVP 기반 검사
+
+| ID | 검사 | 통과 조건 | P3-01 결과 |
+|---|---|---|---|
+| X-01 | 생성본 재열기 | Microsoft Excel에서 XLSM을 읽기 전용으로 다시 열 수 있음 | PASS |
+| X-02 | 시트 구성 | 필수 시트 8개가 모두 존재함 | PASS |
+| X-03 | 서식 선택 목록 | F-001~F-052가 52행으로 존재함 | PASS |
+| X-04 | 수식 오류 | 사용 범위의 `#REF!` 0건 | PASS |
+| X-05 | 외부 의존성 | Excel LinkSources·OOXML externalLinks·connections 0건 | PASS |
 
 ## 6. P1-04 범위·대표 POC 결정 검사
 

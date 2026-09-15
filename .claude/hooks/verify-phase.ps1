@@ -104,7 +104,7 @@ if ($null -ne $gate -and (Test-Path -LiteralPath $taskPath -PathType Leaf)) {
     $taskContent = Get-Content -LiteralPath $taskPath -Raw
     foreach ($taskId in @($gate.phaseTasks)) {
         $escapedId = [regex]::Escape([string]$taskId)
-        $match = [regex]::Match($taskContent, "(?im)^\|\s*$escapedId\s*\|.*\|\s*(DONE|TODO|IN_PROGRESS|BLOCKED)\s*\|.*\|\s*$")
+        $match = [regex]::Match($taskContent, "(?im)^\|\s*$escapedId\s*\|.*\|\s*(DONE|TODO|IN_PROGRESS|BLOCKED)\s*\|(?:.*\|)?\s*$")
         if (-not $match.Success) {
             $failures.Add("활성 Phase 작업 누락 또는 상태 형식 오류: $taskId")
         } elseif ($match.Groups[1].Value -ne 'DONE') {
