@@ -69,9 +69,9 @@ try {
 
     # 4. 시트 목록
     L "시트 목록: $((@($wb.Worksheets) | ForEach-Object { $_.Name }) -join ', ')"
-    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', '서식선택_출력', 'F-007_구매요청기안문', 'F-024_단가비율표', '학교정보', '학교검색', '절차안내', '계약방법안내')
+    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', 'DB_업체', '서식선택_출력', 'F-007_구매요청기안문', 'F-024_단가비율표', '학교정보', '학교검색', '절차안내', '계약방법안내')
     $sheetNames = @($wb.Worksheets | ForEach-Object { $_.Name })
-    Assert-Check ($sheetNames.Count -eq 11 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) '필수 11개 시트가 모두 존재함'
+    Assert-Check ($sheetNames.Count -eq 12 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) '필수 12개 시트가 모두 존재함'
 
     # 4a. 학교검색 및 절차안내 정적 구조
     $wsSchool = $wb.Worksheets.Item('학교정보')
@@ -107,6 +107,8 @@ try {
     $wsIn.Range("B30").Value2 = "동복 하의"
     $wsIn.Range("C30").Value2 = 100
     $wsIn.Range("D30").Value2 = 40000
+    $wsIn.Range("B44").Value2 = "검증업체가"
+    $wsIn.Range("B45").Value2 = "검증업체나"
     $excel.CalculateFullRebuild()
 
     $wsIn.Range('C14').Value2 = '수동입력값'
@@ -136,6 +138,34 @@ try {
     $wsItems = $wb.Worksheets.Item('DB_품목')
     L "DB_품목 기록 확인: $($wsItems.Cells.Item(2, 1).Value2)/$($wsItems.Cells.Item(2, 3).Value2), $($wsItems.Cells.Item(3, 1).Value2)/$($wsItems.Cells.Item(3, 3).Value2)"
     Assert-Check ($wsItems.Cells.Item(2, 1).Value2 -eq 1 -and $wsItems.Cells.Item(2, 3).Value2 -eq '동복 상의' -and $wsItems.Cells.Item(3, 1).Value2 -eq 1 -and $wsItems.Cells.Item(3, 3).Value2 -eq '동복 하의') '저장하기()가 복수 품목 반복행을 DB_품목에 기록함'
+    $wsVendors = $wb.Worksheets.Item('DB_업체')
+    L "DB_업체 기록 확인: $($wsVendors.Cells.Item(2, 1).Value2)/$($wsVendors.Cells.Item(2, 3).Value2), $($wsVendors.Cells.Item(3, 1).Value2)/$($wsVendors.Cells.Item(3, 3).Value2)"
+    Assert-Check ($wsVendors.Cells.Item(2, 1).Value2 -eq 1 -and $wsVendors.Cells.Item(2, 2).Value2 -eq 1 -and $wsVendors.Cells.Item(2, 3).Value2 -eq '검증업체가' -and $wsVendors.Cells.Item(3, 1).Value2 -eq 1 -and $wsVendors.Cells.Item(3, 2).Value2 -eq 2 -and $wsVendors.Cells.Item(3, 3).Value2 -eq '검증업체나') '저장하기()가 복수 업체 반복행을 DB_업체에 기록함'
+    $wsIn.Range('B44:B53').ClearContents()
+    Invoke-ValidationMacro -macroName '검증_첫레코드불러오기'
+    Assert-Check ($wsIn.Range('B44').Value2 -eq '검증업체가' -and $wsIn.Range('B45').Value2 -eq '검증업체나') '불러오기()가 업체 반복행을 원래 행에 복원함'
+    $wsIn.Range('B45').ClearContents()
+    $wsIn.Range('B47').Value2 = '검증업체다'
+    Invoke-ValidationMacro -macroName '검증_수정하기'
+    $wsIn.Range('B44:B53').ClearContents()
+    Invoke-ValidationMacro -macroName '검증_첫레코드불러오기'
+    Assert-Check ($wsIn.Range('B44').Value2 -eq '검증업체가' -and [string]::IsNullOrWhiteSpace([string]$wsIn.Range('B45').Value2) -and $wsIn.Range('B47').Value2 -eq '검증업체다' -and $wsVendors.Cells.Item(3, 2).Value2 -eq 4) '수정하기()가 기존 업체 반복행을 교체하고 저장 행번호를 보존함'
+    $wsIn.Range('B46').Value2 = '검증업체가'
+    Assert-Check ([bool]$excel.Run('검증_업체행검증') -and [bool]$excel.Run('검증_업체중복경고')) '중복 업체명은 저장 전 경고 신호를 반환함'
+    $wsIn.Range('B46').Value2 = 'X'
+    Assert-Check (-not [bool]$excel.Run('검증_업체행검증')) '1자 업체명 입력을 거부함'
+    Invoke-ValidationMacro -macroName '검증_저장하기'
+    Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsDB.Cells.Item(3, 1).Value2)) '형식 오류 업체명은 DB 저장이 거부됨'
+    $wsIn.Range('B46').Value2 = ('가' * 151)
+    Assert-Check (-not [bool]$excel.Run('검증_업체행검증')) '151자 이상 업체명 입력을 거부함'
+    $wsIn.Range('B46').ClearContents()
+    foreach ($forbiddenVendorValue in @('010-1234-5678', '010.1234.5678', '123-45-67890', '123 45 67890', '대표자 홍길동')) {
+        $wsIn.Range('B46').Value2 = $forbiddenVendorValue
+        Assert-Check (-not [bool]$excel.Run('검증_업체행검증')) "업체명 입력란이 금지된 식별·연락처 표기($forbiddenVendorValue)를 거부함"
+        Invoke-ValidationMacro -macroName '검증_저장하기'
+        Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsDB.Cells.Item(3, 1).Value2)) "금지된 식별·연락처 표기($forbiddenVendorValue)가 DB에 저장되지 않음"
+    }
+    $wsIn.Range('B46').ClearContents()
     $wsIn.Range('B31:D31').ClearContents()
     $wsIn.Range('C31').Value2 = 1
     Assert-Check (-not [bool]$excel.Run('검증_품목행검증')) '품목명 없는 수량·단가 고아 입력행을 거부함'
@@ -225,6 +255,7 @@ try {
     $wsDB2 = $wb.Worksheets.Item("DB")
     $wsDB2.Range("A2:T2").ClearContents()
     $wb.Worksheets.Item('DB_품목').Range('A2:F100').ClearContents()
+    $wb.Worksheets.Item('DB_업체').Range('A2:C100').ClearContents()
     $missingInputAccepted = [bool]$excel.Run('검증_필수값검증')
     Assert-Check (-not $missingInputAccepted) '필수값이 비어 있으면 저장 검증이 거부됨'
     L "테스트 데이터 정리(기초자료입력 초기화, DB 2행 삭제) 완료"

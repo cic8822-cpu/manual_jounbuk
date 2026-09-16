@@ -38,6 +38,19 @@ try {
         L "DB_품목 시트 복구 생성 완료"
     }
     try {
+        $wsVendors = $wb.Worksheets.Item("DB_업체")
+    } catch {
+        $wsVendors = $wb.Worksheets.Add()
+        $wsVendors.Name = "DB_업체"
+        $vendorHeaders = @("레코드순번", "행번호", "업체명")
+        for ($i = 0; $i -lt $vendorHeaders.Count; $i++) {
+            $wsVendors.Cells.Item(1, $i + 1).Value2 = $vendorHeaders[$i]
+            $wsVendors.Cells.Item(1, $i + 1).Font.Bold = $true
+        }
+        $wsVendors.Rows.Item(1).AutoFilter() | Out-Null
+        L "DB_업체 시트 복구 생성 완료"
+    }
+    try {
         $blankSheet = $wb.Worksheets.Item("Sheet2")
         if ($blankSheet.UsedRange.CountLarge -eq 1 -and [string]::IsNullOrWhiteSpace([string]$blankSheet.Range("A1").Value2)) {
             $excel.DisplayAlerts = $false
@@ -90,6 +103,7 @@ Private Sub 초기화_실행(ByVal showMessage As Boolean)
         .Range("C24").Value = ""
         .Range("C25").Value = ""
         .Range("B29:D38").ClearContents
+        .Range("B44:B53").ClearContents
         .Range("H1").Value = ""
     End With
     If showMessage Then MsgBox "기초자료가 초기화되었습니다.", vbInformation
@@ -176,6 +190,63 @@ Public Function 검증_품목행검증() As Boolean
     검증_품목행검증 = 품목행검증(Sheets("기초자료입력"), False)
 End Function
 
+Private Function 숫자개수(ByVal textValue As String) As Long
+    Dim i As Long, count As Long
+    For i = 1 To Len(textValue)
+        If Mid(textValue, i, 1) Like "#" Then count = count + 1
+    Next i
+    숫자개수 = count
+End Function
+
+Private Function 업체행검증(ByVal wsIn As Worksheet, ByVal showMessage As Boolean) As Boolean
+    Dim sourceRow As Long, vendorName As String
+    업체행검증 = True
+    For sourceRow = 44 To 53
+        vendorName = Trim(wsIn.Cells(sourceRow, 2).Value & "")
+        If vendorName <> "" Then
+            If Len(vendorName) < 2 Or Len(vendorName) > 150 Then
+                If showMessage Then MsgBox "업체 " & (sourceRow - 43) & "행은 2~150자로 입력하세요.", vbExclamation
+                업체행검증 = False
+                Exit Function
+            End If
+            If InStr(vendorName, "대표자") > 0 Or InStr(vendorName, "대표") > 0 Or _
+               InStr(vendorName, "연락처") > 0 Or InStr(vendorName, "전화") > 0 Or _
+               InStr(vendorName, "휴대폰") > 0 Or InStr(vendorName, "사업자번호") > 0 Or _
+               숫자개수(vendorName) >= 8 Or _
+               vendorName Like "*[0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]*" Or _
+               vendorName Like "*0[0-9]-[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]*" Or _
+               vendorName Like "*01[0-9]-[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]*" Then
+                If showMessage Then MsgBox "업체명만 입력하세요. 대표자·연락처·전화번호·사업자번호는 입력·저장하지 않습니다.", vbExclamation
+                업체행검증 = False
+                Exit Function
+            End If
+        End If
+    Next sourceRow
+End Function
+
+Public Function 검증_업체행검증() As Boolean
+    검증_업체행검증 = 업체행검증(Sheets("기초자료입력"), False)
+End Function
+
+Public Function 검증_업체중복경고() As Boolean
+    Dim wsIn As Worksheet, sourceRow As Long, compareRow As Long
+    Dim vendorName As String, compareName As String
+    Set wsIn = Sheets("기초자료입력")
+    For sourceRow = 44 To 53
+        vendorName = Trim(wsIn.Cells(sourceRow, 2).Value & "")
+        If vendorName <> "" Then
+            For compareRow = sourceRow + 1 To 53
+                compareName = Trim(wsIn.Cells(compareRow, 2).Value & "")
+                If compareName <> "" And StrComp(vendorName, compareName, vbTextCompare) = 0 Then
+                    검증_업체중복경고 = True
+                    Exit Function
+                End If
+            Next compareRow
+        End If
+    Next sourceRow
+    검증_업체중복경고 = False
+End Function
+
 Private Sub 품목복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsItems As Worksheet, ByVal seq As Long)
     Dim rowIndex As Long, sourceRow As Long, targetRow As Long
     For rowIndex = wsItems.Cells(wsItems.Rows.Count, 1).End(xlUp).Row To 2 Step -1
@@ -197,6 +268,25 @@ Private Sub 품목복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsItems 
     Next sourceRow
 End Sub
 
+Private Sub 업체복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsVendors As Worksheet, ByVal seq As Long)
+    Dim rowIndex As Long, sourceRow As Long, targetRow As Long, vendorName As String
+    For rowIndex = wsVendors.Cells(wsVendors.Rows.Count, 1).End(xlUp).Row To 2 Step -1
+        If wsVendors.Cells(rowIndex, 1).Value = seq Then wsVendors.Rows(rowIndex).Delete
+    Next rowIndex
+
+    targetRow = wsVendors.Cells(wsVendors.Rows.Count, 1).End(xlUp).Row + 1
+    If targetRow < 2 Then targetRow = 2
+    For sourceRow = 44 To 53
+        vendorName = Trim(wsIn.Cells(sourceRow, 2).Value & "")
+        If vendorName <> "" Then
+            wsVendors.Cells(targetRow, 1).Value = seq
+            wsVendors.Cells(targetRow, 2).Value = sourceRow - 43
+            wsVendors.Cells(targetRow, 3).Value = vendorName
+            targetRow = targetRow + 1
+        End If
+    Next sourceRow
+End Sub
+
 Sub 저장하기()
     Call 저장하기_실행(True)
 End Sub
@@ -207,11 +297,14 @@ End Sub
 
 Private Sub 저장하기_실행(ByVal showMessage As Boolean)
     If Not 필수값검증() Then Exit Sub
-    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
     Set wsItems = Sheets("DB_품목")
+    Set wsVendors = Sheets("DB_업체")
     If Not 품목행검증(wsIn, showMessage) Then Exit Sub
+    If Not 업체행검증(wsIn, showMessage) Then Exit Sub
+    If showMessage And 검증_업체중복경고() Then MsgBox "중복된 업체명이 있습니다. 실제 동일 업체인지 확인한 뒤 저장하세요.", vbExclamation
 
     Dim lastRow As Long
     lastRow = wsDB.Cells(wsDB.Rows.Count, 1).End(xlUp).Row
@@ -227,18 +320,30 @@ Private Sub 저장하기_실행(ByVal showMessage As Boolean)
     wsDB.Cells(newRow, 1).Value = seq
     Call 필드복사_기초자료_DB(wsIn, wsDB, newRow)
     Call 품목복사_기초자료_DB(wsIn, wsItems, seq)
+    Call 업체복사_기초자료_DB(wsIn, wsVendors, seq)
 
     wsIn.Range("H1").Value = seq
     If showMessage Then MsgBox "저장되었습니다. (순번 " & seq & ")", vbInformation
 End Sub
 
 Sub 수정하기()
+    Call 수정하기_실행(True)
+End Sub
+
+Public Sub 검증_수정하기()
+    Call 수정하기_실행(False)
+End Sub
+
+Private Sub 수정하기_실행(ByVal showMessage As Boolean)
     If Not 필수값검증() Then Exit Sub
-    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
     Set wsItems = Sheets("DB_품목")
-    If Not 품목행검증(wsIn, True) Then Exit Sub
+    Set wsVendors = Sheets("DB_업체")
+    If Not 품목행검증(wsIn, showMessage) Then Exit Sub
+    If Not 업체행검증(wsIn, showMessage) Then Exit Sub
+    If showMessage And 검증_업체중복경고() Then MsgBox "중복된 업체명이 있습니다. 실제 동일 업체인지 확인한 뒤 수정하세요.", vbExclamation
 
     Dim seq As Variant
     seq = wsIn.Range("H1").Value
@@ -254,7 +359,8 @@ Sub 수정하기()
     End If
     Call 필드복사_기초자료_DB(wsIn, wsDB, r)
     Call 품목복사_기초자료_DB(wsIn, wsItems, CLng(seq))
-    MsgBox "수정되었습니다. (순번 " & seq & ")", vbInformation
+    Call 업체복사_기초자료_DB(wsIn, wsVendors, CLng(seq))
+    If showMessage Then MsgBox "수정되었습니다. (순번 " & seq & ")", vbInformation
 End Sub
 
 Sub 불러오기()
@@ -265,14 +371,23 @@ Sub 불러오기()
         MsgBox "숫자를 입력하세요.", vbExclamation
         Exit Sub
     End If
-    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet
+    Call 불러오기_순번(CLng(seqStr), True)
+End Sub
+
+Public Sub 검증_첫레코드불러오기()
+    Call 불러오기_순번(1, False)
+End Sub
+
+Private Sub 불러오기_순번(ByVal seq As Long, ByVal showMessage As Boolean)
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
     Set wsItems = Sheets("DB_품목")
+    Set wsVendors = Sheets("DB_업체")
     Dim r As Long
-    r = CLng(seqStr) + 1
-    If wsDB.Cells(r, 1).Value <> CLng(seqStr) Then
-        MsgBox "해당 순번의 레코드를 찾을 수 없습니다.", vbCritical
+    r = seq + 1
+    If wsDB.Cells(r, 1).Value <> seq Then
+        If showMessage Then MsgBox "해당 순번의 레코드를 찾을 수 없습니다.", vbCritical
         Exit Sub
     End If
     wsIn.Range("C4").Value = wsDB.Cells(r, 2).Value
@@ -296,7 +411,7 @@ Sub 불러오기()
     wsIn.Range("B29:D38").ClearContents
     Dim itemRow As Long, inputRow As Long
     For itemRow = 2 To wsItems.Cells(wsItems.Rows.Count, 1).End(xlUp).Row
-        If wsItems.Cells(itemRow, 1).Value = CLng(seqStr) Then
+        If wsItems.Cells(itemRow, 1).Value = seq Then
             inputRow = 28 + CLng(wsItems.Cells(itemRow, 2).Value)
             If inputRow >= 29 And inputRow <= 38 Then
                 wsIn.Cells(inputRow, 2).Value = wsItems.Cells(itemRow, 3).Value
@@ -305,8 +420,15 @@ Sub 불러오기()
             End If
         End If
     Next itemRow
-    wsIn.Range("H1").Value = CLng(seqStr)
-    MsgBox "불러왔습니다. (순번 " & seqStr & ")", vbInformation
+    wsIn.Range("B44:B53").ClearContents
+    For itemRow = 2 To wsVendors.Cells(wsVendors.Rows.Count, 1).End(xlUp).Row
+        If wsVendors.Cells(itemRow, 1).Value = seq Then
+            inputRow = 43 + CLng(wsVendors.Cells(itemRow, 2).Value)
+            If inputRow >= 44 And inputRow <= 53 Then wsIn.Cells(inputRow, 2).Value = wsVendors.Cells(itemRow, 3).Value
+        End If
+    Next itemRow
+    wsIn.Range("H1").Value = seq
+    If showMessage Then MsgBox "불러왔습니다. (순번 " & seq & ")", vbInformation
 End Sub
 '@
 

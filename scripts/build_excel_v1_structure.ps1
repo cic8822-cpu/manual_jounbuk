@@ -47,6 +47,7 @@ try {
     $ws.Range("A7").Value2 = "5. '절차안내' 시트는 교복구매 9단계와 단계별 관련 Form ID를 제공합니다. 단계 행을 선택하고 [관련 Form ID로 이동]을 누르면 서식선택_출력의 해당 Form ID로 이동합니다."
     $ws.Range("A8").Value2 = "6. 이 v1 버전은 F-007, F-024 두 서식만 완전히 구현되어 있습니다. 나머지 서식은 '구현상태' 열에 표시된 대로 순차 추가 예정입니다."
     $ws.Range("A9").Value2 = "7. F-013(교복 디자인 및 규격서)은 표·이미지가 많은 다쪽(11쪽) 문서로, Excel보다 HWPX 경로가 적합하여 이번 버전에서는 보류하고 document-automation-engineer 협업 대상으로 남겼습니다."
+    $ws.Range("A10").Value2 = "8. 업체 후보는 '기초자료입력' 시트의 업체 반복행에 상호명만 입력합니다. 대표자·연락처·전화번호·사업자번호는 입력·저장하지 않으며, 중복 상호는 실제 동일 업체인지 확인합니다."
     $ws.Range("A11").Value2 = "원본 보호: 이 파일은 20230808_용역계약갈라잡이(디깅모멘텀)_이행원.xlsm 을 참고해 클린룸 방식으로 새로 작성한 사본이며, 원본 파일을 직접 열거나 수정하지 않습니다."
     $ws.Range("A12").Value2 = "개인정보 경계: 이 파일은 학교·계약 단위 업무 정보만 다루며, 학생·학부모 개인정보 및 서명·직인 자동처리는 포함하지 않습니다."
     $ws.Columns.Item("A").ColumnWidth = 110
@@ -143,6 +144,15 @@ try {
     $ws.Range("E39").NumberFormat = "#,##0"
     $ws.Range("E39").Font.Bold = $true
 
+    $ws.Range("B42").Value2 = "5. 업체 반복행 (R-03 업체명) — 입찰·평가·계약 문서의 공통 후보 목록"
+    $ws.Range("B42").Font.Bold = $true
+    $ws.Range("B43").Value2 = "업체명"
+    $ws.Range("B43").Font.Bold = $true
+    for ($i = 0; $i -lt 10; $i++) {
+        $r = 44 + $i
+        $ws.Range("B$r").Interior.Color = 16777164
+    }
+
     $ws.Columns.Item("A").ColumnWidth = 6
     $ws.Columns.Item("B").ColumnWidth = 20
     $ws.Columns.Item("C").ColumnWidth = 20
@@ -174,6 +184,17 @@ try {
     }
     $wsItems.Rows.Item(1).AutoFilter() | Out-Null
     L "DB_품목 시트 작성 완료 (반복행 저장용)"
+
+    # ---- 5a. DB_업체 (R-03 반복행 정규화 저장, 연락처·사업자번호 등 제외) ----
+    $wsVendors = $wbNew.Worksheets.Add()
+    $wsVendors.Name = "DB_업체"
+    $vendorHeaders = @("레코드순번", "행번호", "업체명")
+    for ($i = 0; $i -lt $vendorHeaders.Count; $i++) {
+        $wsVendors.Cells.Item(1, $i + 1).Value2 = $vendorHeaders[$i]
+        $wsVendors.Cells.Item(1, $i + 1).Font.Bold = $true
+    }
+    $wsVendors.Rows.Item(1).AutoFilter() | Out-Null
+    L "DB_업체 시트 작성 완료 (업체명 반복행 저장용, 개인정보·연락처 제외)"
 
     # ---- 6. 서식선택_출력 ----
     $wsSel = $wbNew.Worksheets.Add()
