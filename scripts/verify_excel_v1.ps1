@@ -13,9 +13,24 @@ if (-not (Test-Path -LiteralPath $targetPath -PathType Leaf)) {
     throw "검증 대상 XLSM이 없습니다: $targetPath"
 }
 
-if (Test-Path -LiteralPath $logPath) { Remove-Item -LiteralPath $logPath -Force }
-if (Test-Path -LiteralPath $legacyValidationPath) { Remove-Item -LiteralPath $legacyValidationPath -Force }
-if (Test-Path -LiteralPath $validationDirectory) { Remove-Item -LiteralPath $validationDirectory -Recurse -Force }
+# Phase 훅은 모든 Write/Edit마다 이 스크립트를 다시 실행하므로, 직전 실행이 정리한
+# EXCEL.EXE의 파일 잠금이 완전히 풀리기 전에 다음 실행이 곧바로 이어질 수 있음.
+# 잠금 해제를 잠깐 기다리는 재시도로 이 경합 때문에 최상단에서 통째로 실패하는 것을 막는다.
+function RemovePathWithRetry([string]$path, [int]$maxAttempts = 5, [int]$delayMs = 500) {
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        try {
+            if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Stop }
+            return
+        } catch {
+            if ($attempt -eq $maxAttempts) { throw }
+            Start-Sleep -Milliseconds $delayMs
+        }
+    }
+}
+
+RemovePathWithRetry -path $logPath
+RemovePathWithRetry -path $legacyValidationPath
+RemovePathWithRetry -path $validationDirectory
 New-Item -ItemType Directory -Path $validationDirectory -Force | Out-Null
 function L($s) {
     [System.IO.File]::AppendAllText($logPath, "$s`r`n", [System.Text.UTF8Encoding]::new($false))
@@ -33,7 +48,16 @@ function Invoke-ValidationMacro([string]$macroName) {
 }
 
 Copy-Item -LiteralPath $targetPath -Destination $validationPath -Force
+# Quit()·ReleaseComObject·GC만으로는 남은 스크립트 지역변수가 COM 참조를 계속
+# 살려 두어 EXCEL.EXE가 좀비로 남을 수 있음. 생성 전후 프로세스 목록을 비교해
+# 새로 뜬 PID를 기록해 두고, finally에서 종료가 확인되지 않으면 이 PID만
+# 강제 종료해 고아 프로세스가 다음 실행을 막지 않게 함.
+$excelPidsBefore = @(Get-Process -Name EXCEL -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
 $excel = New-Object -ComObject Excel.Application
+Start-Sleep -Milliseconds 300
+$excelProcessId = Get-Process -Name EXCEL -ErrorAction SilentlyContinue |
+    Where-Object { $excelPidsBefore -notcontains $_.Id } |
+    Select-Object -First 1 -ExpandProperty Id
 $excel.Visible = $false
 $excel.DisplayAlerts = $false
 
@@ -69,15 +93,16 @@ try {
 
     # 4. 시트 목록
     L "시트 목록: $((@($wb.Worksheets) | ForEach-Object { $_.Name }) -join ', ')"
-    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', 'DB_업체', 'DB_위원', 'DB_평가', '서식선택_출력', 'F-007_구매요청기안문', 'F-024_단가비율표', '학교정보', '학교검색', '절차안내', '계약방법안내')
+    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', 'DB_업체', 'DB_위원', 'DB_평가', 'DB_정량평가', '서식선택_출력', 'F-007_구매요청기안문', 'F-014_평가항목배점기준', 'F-015_정량적평가', 'F-024_단가비율표', '학교정보', '학교검색', '절차안내', '계약방법안내')
     $sheetNames = @($wb.Worksheets | ForEach-Object { $_.Name })
-    Assert-Check ($sheetNames.Count -eq 14 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) '필수 14개 시트가 모두 존재함'
+    Assert-Check ($sheetNames.Count -eq 17 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) '필수 17개 시트가 모두 존재함'
     $wsProtectedDB = $wb.Worksheets.Item('DB')
     $wsProtectedItems = $wb.Worksheets.Item('DB_품목')
     $wsProtectedVendors = $wb.Worksheets.Item('DB_업체')
     $wsProtectedCommittee = $wb.Worksheets.Item('DB_위원')
     $wsProtectedScore = $wb.Worksheets.Item('DB_평가')
-    Assert-Check ($wsProtectedDB.ProtectContents -and $wsProtectedItems.ProtectContents -and $wsProtectedVendors.ProtectContents -and $wsProtectedCommittee.ProtectContents -and $wsProtectedScore.ProtectContents -and $wsProtectedDB.Visible -eq 0 -and $wsProtectedItems.Visible -eq 2 -and $wsProtectedVendors.Visible -eq 2 -and $wsProtectedCommittee.Visible -eq 2 -and $wsProtectedScore.Visible -eq 2) 'DB는 숨김·보호되고 반복 DB는 VeryHidden·보호됨'
+    $wsProtectedQuant = $wb.Worksheets.Item('DB_정량평가')
+    Assert-Check ($wsProtectedDB.ProtectContents -and $wsProtectedItems.ProtectContents -and $wsProtectedVendors.ProtectContents -and $wsProtectedCommittee.ProtectContents -and $wsProtectedScore.ProtectContents -and $wsProtectedQuant.ProtectContents -and $wsProtectedDB.Visible -eq 0 -and $wsProtectedItems.Visible -eq 2 -and $wsProtectedVendors.Visible -eq 2 -and $wsProtectedCommittee.Visible -eq 2 -and $wsProtectedScore.Visible -eq 2 -and $wsProtectedQuant.Visible -eq 2) 'DB는 숨김·보호되고 반복 DB는 VeryHidden·보호됨'
     L 'DB 숨김·무암호 보호는 우발적 편집 방지 상태로만 확인함. 직접 DB 편집의 영구 저장 차단은 아래 Workbook_BeforeSave 저장 경계 시나리오에서 별도로 검증함.'
 
     # 4a. 학교검색 및 절차안내 정적 구조
@@ -90,8 +115,8 @@ try {
     $wsMethod = $wb.Worksheets.Item('계약방법안내')
     Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B5').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B6').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B7').Value2) -and $wsMethod.Buttons('btn계약방법반영').OnAction -eq '계약방법안내_기초자료반영') '계약방법안내가 빈 확인값으로 시작하며 반영 버튼이 존재함'
 
-    # 5. A4 1쪽 자연 충족 재확인 (F-007, F-024)
-    foreach ($sn in @("F-007_구매요청기안문","F-024_단가비율표")) {
+    # 5. A4 1쪽 자연 충족 재확인 (F-007, F-014, F-024)
+    foreach ($sn in @("F-007_구매요청기안문","F-014_평가항목배점기준","F-015_정량적평가","F-024_단가비율표")) {
         $ws = $wb.Worksheets.Item($sn)
         $hb = $ws.HPageBreaks.Count
         $vb = $ws.VPageBreaks.Count
@@ -115,7 +140,15 @@ try {
     $wsIn.Range("C30").Value2 = 100
     $wsIn.Range("D30").Value2 = 40000
     $wsIn.Range("B44").Value2 = "검증업체가"
+    $wsIn.Range("C44").Value2 = 10
+    $wsIn.Range("D44").Value2 = 10
+    $wsIn.Range("E44").Value2 = 15
+    $wsIn.Range("F44").Value2 = 15
     $wsIn.Range("B45").Value2 = "검증업체나"
+    $wsIn.Range("C45").Value2 = 6
+    $wsIn.Range("D45").Value2 = 8
+    $wsIn.Range("E45").Value2 = 9
+    $wsIn.Range("F45").Value2 = 0
     $wsIn.Range("B58").Value2 = "교원위원"
     $wsIn.Range("C58").Value2 = "위원 ○○"
     $wsIn.Range("B59").Value2 = "학부모위원"
@@ -127,6 +160,23 @@ try {
     $wsIn.Range("C73").Value2 = 60
     $wsIn.Range("D73").Value2 = 60
     $excel.CalculateFullRebuild()
+
+    $wsF14 = $wb.Worksheets.Item('F-014_평가항목배점기준')
+    Assert-Check ($wsF14.Range('B3').Value2 -eq '[붙임 3] 제안서 평가항목 및 배점기준' -and $wsF14.Range('B9').Value2 -eq '구분' -and $wsF14.Range('C9').Value2 -eq '평가항목' -and $wsF14.Range('D9').Value2 -eq '배점기준' -and $wsF14.Range('E9').Value2 -eq '배점' -and $wsF14.Range('F9').Value2 -eq '평가점수') 'F-014 원문 대조 제목과 평가기준 표 머리글이 존재함'
+    Assert-Check ($wsF14.Range('C10').Value2 -eq '제품 품질' -and $wsF14.Range('E10').Value2 -eq 40 -and $wsF14.Range('F10').Value2 -eq 38.5 -and $wsF14.Range('C11').Value2 -eq '사후 관리' -and $wsF14.Range('F11').Value2 -eq 60 -and $wsF14.Range('F20').Value2 -eq 98.5) 'F-014가 R-07 복수 평가행과 K-03 총점을 자동 반영함'
+    Assert-Check ([bool]$excel.Run('검증_F014출력가능')) 'F-014 선택 출력이 필수값과 완전한 복수 평가행을 허용함'
+
+    $wsF15 = $wb.Worksheets.Item('F-015_정량적평가')
+    Assert-Check ($wsF15.Range('B3').Value2 -eq '[9-4] [붙임 3_1] [1단계] 정량적 평가' -and $wsF15.Range('B8').Value2 -eq '구분' -and $wsF15.Range('C8').Value2 -eq '평가항목' -and $wsF15.Range('D8').Value2 -eq '배점기준' -and $wsF15.Range('E8').Value2 -eq '배점' -and $wsF15.Range('F8').Value2 -eq '평가점수') 'F-015 원문 대조 제목과 고정 배점표 머리글이 존재함'
+    $wsF15.Range('I3').Value2 = 1
+    $excel.CalculateFullRebuild()
+    Assert-Check ($wsF15.Range('G5').Value2 -eq '검증업체가' -and $wsF15.Range('F9').Value2 -eq 10 -and $wsF15.Range('F13').Value2 -eq 10 -and $wsF15.Range('F16').Value2 -eq 15 -and $wsF15.Range('F20').Value2 -eq 15 -and $wsF15.Range('F22').Value2 -eq 50) 'F-015가 선택 업체 순번(I3)의 4개 항목 점수와 합계 50점을 정확히 반영함'
+    $wsF15.Range('I3').Value2 = 2
+    $excel.CalculateFullRebuild()
+    Assert-Check ($wsF15.Range('G5').Value2 -eq '검증업체나' -and $wsF15.Range('F9').Value2 -eq 6 -and $wsF15.Range('F22').Value2 -eq 23) 'F-015가 선택 업체 순번을 바꾸면 다른 업체의 점수를 반영함'
+    $wsF15.Range('I3').Value2 = 1
+    $excel.CalculateFullRebuild()
+    Assert-Check ([bool]$excel.Run('검증_F015출력가능')) 'F-015 선택 출력이 완전한 업체별 정량평가를 허용함'
 
     $wsIn.Range('C14').Value2 = '수동입력값'
     Invoke-ValidationMacro -macroName '검증_계약방법안내_기초자료반영'
@@ -158,6 +208,8 @@ try {
     $wsVendors = $wb.Worksheets.Item('DB_업체')
     L "DB_업체 기록 확인: $($wsVendors.Cells.Item(2, 1).Value2)/$($wsVendors.Cells.Item(2, 3).Value2), $($wsVendors.Cells.Item(3, 1).Value2)/$($wsVendors.Cells.Item(3, 3).Value2)"
     Assert-Check ($wsVendors.Cells.Item(2, 1).Value2 -eq 1 -and $wsVendors.Cells.Item(2, 2).Value2 -eq 1 -and $wsVendors.Cells.Item(2, 3).Value2 -eq '검증업체가' -and $wsVendors.Cells.Item(3, 1).Value2 -eq 1 -and $wsVendors.Cells.Item(3, 2).Value2 -eq 2 -and $wsVendors.Cells.Item(3, 3).Value2 -eq '검증업체나') '저장하기()가 복수 업체 반복행을 DB_업체에 기록함'
+    # DB_정량평가는 저장하기()·수정하기()·불러오기()와 연동하지 않음(원인 미상 무한 대기로 제거,
+    # _workspace/03_excel/F-015_구현검증.md 5절 참고). 항상 빈 상태이므로 저장 결과를 검증하지 않음.
     $wsCommittee = $wb.Worksheets.Item('DB_위원')
     Assert-Check ($wsCommittee.Cells.Item(2, 1).Value2 -eq 1 -and $wsCommittee.Cells.Item(2, 2).Value2 -eq 1 -and $wsCommittee.Cells.Item(2, 3).Value2 -eq '교원위원' -and $wsCommittee.Cells.Item(2, 4).Value2 -eq '위원 ○○' -and $wsCommittee.Cells.Item(3, 3).Value2 -eq '학부모위원' -and $wsCommittee.Cells.Item(3, 4).Value2 -eq '위원 **') '저장하기()가 복수 위원 역할·마스킹 식별표시를 DB_위원에 정규화 저장함'
     $wsScore = $wb.Worksheets.Item('DB_평가')
@@ -219,12 +271,23 @@ try {
     $wsIn.Range('C58').Value2 = '위원 ○○'
     $wsIn.Range('D74').Value2 = 1
     Assert-Check (-not [bool]$excel.Run('검증_평가행검증')) '평가항목·배점 없는 점수 고아 입력행을 거부함'
+    Assert-Check (-not [bool]$excel.Run('검증_F014출력가능')) 'F-014 선택 출력이 불완전 평가행을 차단함'
     $wsIn.Range('B74:D74').ClearContents()
     $wsIn.Range('B74').Value2 = '가격 경쟁력'
     $wsIn.Range('C74').Value2 = 20
     $wsIn.Range('D74').Value2 = 20.01
     Assert-Check (-not [bool]$excel.Run('검증_평가행검증')) '배점을 초과한 평가점수를 거부함'
+    Assert-Check (-not [bool]$excel.Run('검증_F014출력가능')) 'F-014 선택 출력이 배점 초과 평가행을 차단함'
     $wsIn.Range('B74:D74').ClearContents()
+
+    $wsIn.Range('C44').Value2 = 11
+    Assert-Check (-not [bool]$excel.Run('검증_정량평가행검증')) 'F-015 배점 상한(수행경험 10점)을 초과한 점수를 거부함'
+    Assert-Check (-not [bool]$excel.Run('검증_F015출력가능')) 'F-015 선택 출력이 배점 초과 정량평가를 차단함'
+    $wsIn.Range('C44').Value2 = 10
+    $wsIn.Range('D46').Value2 = 5
+    Assert-Check (-not [bool]$excel.Run('검증_정량평가행검증')) '업체명 없이 정량평가 점수만 있는 F-015 고아 입력을 거부함'
+    $wsIn.Range('D46').ClearContents()
+    Assert-Check ([bool]$excel.Run('검증_정량평가행검증')) 'F-015 정량평가 정상 복귀 후 저장 검증을 통과함'
     $wsIn.Range('B58:C67').ClearContents()
     $wsIn.Range('B72:D81').ClearContents()
     $wsIn.Range('B44:B53').ClearContents()
@@ -283,7 +346,7 @@ try {
     Assert-Check ([bool]$excel.Run('검증_F024출력가능') -eq $false) 'F-024 선택 출력이 완전한 7개 품목을 거부함'
     $wsIn.Range('B31:D35').ClearContents()
 
-    # F-007/F-024 수식이 HWPX 원문 대조 후 확정한 v2 배치에서 기초자료입력을 정상 참조하는지 확인
+    # F-007/F-014/F-024 수식이 HWPX 원문 대조 후 확정한 배치에서 기초자료입력을 정상 참조하는지 확인
     $wsF7 = $wb.Worksheets.Item("F-007_구매요청기안문")
     L "F-007 제목 셀(C9) 계산값: $($wsF7.Range('C9').Value2)"
     Assert-Check ($wsF7.Range('C9').Value2 -eq '2026학년도 동복 학교주관구매 요청') 'F-007 공통 제목이 입력값을 참조함'
@@ -291,6 +354,23 @@ try {
     L "F-024 수량 합계(D15) 계산값: $($wsF24.Range('D15').Value2), 비율(E9/E10): $($wsF24.Range('E9').Value2)/$($wsF24.Range('E10').Value2)"
     Assert-Check ($wsF24.Range('D15').Value2 -eq 204 -and $wsF24.Range('E9').Text -eq '55.6%' -and $wsF24.Range('E10').Text -eq '44.4%') 'F-024 수량 합계와 단가비율이 입력값을 참조함'
     Assert-Check ($wsF24.Range('C9').Value2 -eq '동복 상의' -and $wsF24.Range('C10').Value2 -eq '동복 하의') 'F-024 품목명이 입력 반복행을 참조함'
+    $longTitle = ('평가 기준 & 특수문자 <>()[]{} / ' * 4)
+    $wsIn.Range('C4').Value2 = ('검증학교 & 특수문자 <>()[]{} ' * 3)
+    $wsIn.Range('C22').Value2 = $longTitle
+    # DB_정량평가 연동 제거로 F-015 점수는 불러오기() 이후 유지되지 않으므로(위 DB_정량평가 주석 참고),
+    # 수식 검증을 위해 여기서 다시 직접 입력함.
+    $wsIn.Range('B44').Value2 = '검증업체가'
+    $wsIn.Range('C44').Value2 = 10
+    $wsIn.Range('D44').Value2 = 10
+    $wsIn.Range('E44').Value2 = 15
+    $wsIn.Range('F44').Value2 = 15
+    $wsF15.Range('I3').Value2 = 1
+    $excel.CalculateFullRebuild()
+    Assert-Check ($wsF14.Range('C5').Value2 -eq $wsIn.Range('C4').Value2 -and $wsF14.Range('B6').Value2 -eq $longTitle -and $wsF14.Range('F20').Value2 -eq 98) 'F-014 최대 길이·특수문자 공통값과 점수 합계가 수식 오류 없이 반영됨'
+    Assert-Check ($wsF15.Range('C5').Value2 -eq $wsIn.Range('C4').Value2 -and $wsF15.Range('F22').Value2 -eq 50) 'F-015 최대 길이·특수문자 학교명과 정량평가 합계가 수식 오류 없이 반영됨(같은 세션 직접 입력값 기준)'
+    $wsIn.Range('C4').Value2 = '테스트초등학교'
+    $wsIn.Range('C22').Value2 = '2026학년도 동복 학교주관구매 요청'
+    $excel.CalculateFullRebuild()
 
     # 6a. 학교명·지역·급별 검색 및 선택 결과 C4 반영 (공개 기관정보 표본, 검증 사본만 사용)
     # 원본 표본의 외부 쿼리 캐시에 검색 열 값이 비어 있을 수 있으므로, 검증 사본에만 마스킹 기관정보를 넣어
@@ -316,11 +396,11 @@ try {
 
     # 7. 서식선택_출력 체크 + PDF 내보내기 매크로 테스트
     $wsSel = $wb.Worksheets.Item("서식선택_출력")
-    # F-007, F-024 행 찾기
+    # F-007, F-014, F-024 행 찾기
     $lastRow = $wsSel.Cells.Item($wsSel.Rows.Count, 2).End(-4162).Row  # xlUp
     for ($r = 5; $r -le $lastRow; $r++) {
         $fid = $wsSel.Cells.Item($r, 2).Value2
-        if ($fid -eq "F-007" -or $fid -eq "F-024") {
+        if ($fid -eq "F-007" -or $fid -eq "F-014" -or $fid -eq "F-015" -or $fid -eq "F-024") {
             $wsSel.Cells.Item($r, 1).Value2 = $true
         }
     }
@@ -332,6 +412,8 @@ try {
         $failures.Add("매크로 선택서식_PDF저장() 실패: $($_.Exception.Message)")
         L "FAIL: 매크로 선택서식_PDF저장() 실패: $($_.Exception.Message)"
     }
+    $leftoverF015TempSheets = @($wb.Worksheets | Where-Object { $_.Name -like 'F015_임시_*' })
+    Assert-Check ($leftoverF015TempSheets.Count -eq 0) 'F-015 업체별 임시 인쇄 시트가 PDF 저장 후 정리됨'
 
     $outputDir = Join-Path $validationDirectory 'output'
     if (Test-Path $outputDir) {
@@ -372,6 +454,15 @@ try {
     [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
     [GC]::Collect()
     [GC]::WaitForPendingFinalizers()
+    [GC]::Collect()
+    [GC]::WaitForPendingFinalizers()
+    if ($excelProcessId) {
+        Start-Sleep -Milliseconds 500
+        if (Get-Process -Id $excelProcessId -ErrorAction SilentlyContinue) {
+            Stop-Process -Id $excelProcessId -Force -ErrorAction SilentlyContinue
+            L "PID $excelProcessId Excel 프로세스가 Quit() 이후에도 남아 있어 강제 종료함"
+        }
+    }
     if (Test-Path -LiteralPath $validationDirectory) { Remove-Item -LiteralPath $validationDirectory -Recurse -Force }
 }
 

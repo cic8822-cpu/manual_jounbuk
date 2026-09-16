@@ -1,6 +1,10 @@
-# 교복구매 길라잡이 프로젝트 지침
+# CLAUDE.md
 
-교복 학교주관구매 업무를 안내하고 Excel·HWPX·PDF 서식 출력을 자동화하는 프로젝트임.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## 프로젝트 개요
+
+교복 학교주관구매 업무를 안내하고 Excel·HWPX·PDF 서식 출력을 자동화하는 프로젝트임. `AGENTS.md`에도 같은 취지의 지침이 있으니 두 파일을 함께 갱신함(중복 서술은 피하고 최신 상태만 반영).
 
 ## 프로젝트 정보
 
@@ -12,19 +16,21 @@
 
 ## 자주 사용하는 명령
 
-- **Excel MVP 초안 생성**: `powershell -ExecutionPolicy Bypass -File scripts/run_excel_mvp_utf8.ps1` (내부적으로 `scripts/create_excel_mvp.ps1`을 UTF-8로 재해석해 실행함. Excel COM 자동화이므로 Microsoft 365가 설치된 Windows에서만 동작하며, `서식_인벤토리.md`의 Form ID 목록(F-001~F-052, 52개)을 파싱해 `artifacts/excel/교복구매_길라잡이_MVP_초안.xlsm`을 새로 생성함.)
-- **Phase 검증 Hook 수동 실행**: `powershell -ExecutionPolicy Bypass -File .claude/hooks/verify-phase.ps1` (Write/Edit·TaskCompleted·Stop 시 자동 실행되며, `.claude/quality-gate.json`의 `activePhase`·`phaseTestIds`·`sourceHashes` 기준으로 체크리스트·테스트 상태·원본 해시를 검사해 미완료 시 완료 처리를 차단함.)
+- **Excel 안전 빌드(현재 활성 배포 경로)**: `powershell -ExecutionPolicy Bypass -File scripts/run_build_excel_v1_structure_utf8.ps1` — 내부적으로 구조 생성(`scripts/build_excel_v1_structure.ps1`) → VBA 주입(`scripts/build_excel_v1_vba.ps1`) → 사본 검증(`scripts/verify_excel_v1.ps1`)을 순서대로 UTF-8로 재해석해 실행함. Excel COM 자동화이므로 Microsoft 365가 설치된 Windows에서만 동작함. 검증을 통과하면 `artifacts/excel/교복구매_길라잡이_YYYYMMDD_vN.xlsm`으로 저장하며, 같은 날짜에 다시 통과할 때마다 `vN`을 증가시켜 기존 통과본을 보존함(기존 파일을 덮어쓰지 않음).
+  - `build_excel_v1_structure.ps1`·`build_excel_v1_vba.ps1`·`verify_excel_v1.ps1`을 직접 실행하면 임시 `artifacts/excel/build.xlsm`을 대상으로 한 개별 단계만 수행하며, 배포 후보(`v N.xlsm`)를 갱신하지 않음.
+  - `scripts/create_excel_mvp.ps1`/`run_excel_mvp_utf8.ps1`은 초기 8시트 구조 초안용 구버전 스크립트로, P3-01 진행 중 "구조 초안 수준"이라는 이유로 완료 상태가 철회됨([task.md](task.md) 차단 사유 참고). 더 이상 활성 경로가 아니므로 새 작업에는 사용하지 않음.
+- **Phase 검증 Hook 수동 실행**: `powershell -ExecutionPolicy Bypass -File .claude/hooks/verify-phase.ps1` (Write/Edit·TaskCompleted·Stop 시 `.claude/settings.json` Hook으로 자동 실행되며, `.claude/quality-gate.json`의 `activePhase`·`phaseTestIds`·`sourceHashes` 기준으로 체크리스트·테스트 상태·원본 해시를 검사해 미완료 시 완료 처리를 차단함.)
 - **원본 무결성 확인**: 원본 `.xlsm`·`.hwpx`의 SHA-256을 계산해 `.claude/quality-gate.json`의 `sourceHashes`와 대조함.
 - **Markdown 공백 오류 검사(Q-02 게이트)**: `git diff --check`
 
 ## 아키텍처 개요
 
-- **Phase 파이프라인**: P0(원본 무결성·Kordoc/XLSM 정적분석) → P1(Form ID 인벤토리·데이터 모델·POC 범위 확정) → P2(HWPX POC) → P3(Excel MVP) → P4(현장 검증) → P5(웹앱). 각 Phase의 세부 작업 ID·담당·선행·상태는 [task.md](task.md)에, 전체 로드맵과 근거는 [계획.md](계획.md)에 있음. 현재 활성 Phase는 `.claude/quality-gate.json`의 `activePhase`(`P3-01`)이며, P2-01·P3-01은 [task.md](task.md) 하단 차단 사유에 따라 BLOCKED 상태임.
+- **Phase 파이프라인**: P0(원본 무결성·Kordoc/XLSM 정적분석) → P1(Form ID 인벤토리·데이터 모델·POC 범위 확정) → P2(HWPX POC) → P3(Excel MVP) → P4(현장 검증) → P5(웹앱). 각 Phase의 세부 작업 ID·담당·선행·상태는 [task.md](task.md)에, 전체 로드맵과 근거는 [계획.md](계획.md)에 있음. 현재 활성 Phase는 `.claude/quality-gate.json`의 `activePhase` 값이 기준임(자주 바뀌므로 이 파일에 상태를 하드코딩하지 않음 — 항상 [task.md](task.md)·[test.md](test.md)·[로그.md](로그.md)를 직접 확인함).
 - **에이전트 역할 분리**(`.claude/agents/`): `uniform-workflow-analyst`(업무·서식 분석 → `서식_인벤토리.md`/`입력데이터_사전.md`/`서식_매핑표.md` 작성) → `document-automation-engineer`(Kordoc 기반 HWPX 템플릿화·치환·검증) / `excel-automation-engineer`(XLSM 클린룸 재구현, 외부링크·매크로 원본 이식 금지) → `quality-compliance-reviewer`(독립 검토, Critical/High 결함 시 반려하며 완료 처리하지 않음). 각 담당자의 작업기록은 `_workspace/0N_*/`, 최종 산출물은 `artifacts/`에 분리해 둠.
 - **스킬 오케스트레이션**(`.claude/skills/`): `uniform-purchase-orchestrator`가 분석(병렬)→문서자동화/Excel구현→검증(파이프라인) 순서로 에이전트 실행을 조율함. `uniform-purchase-goal`은 `/goal` 기반 목표 실행·상태 확인·재개·해제를 담당함.
 - **품질 게이트**(`.claude/quality-gate.json` + `.claude/hooks/verify-phase.ps1`): Write/Edit·TaskCompleted·Stop 시점마다 활성 Phase의 [체크리스트.md](체크리스트.md)·[test.md](test.md)·원본 SHA-256을 검사함. FAIL·PENDING·미해결 BLOCKED·체크리스트 미완료가 있으면 완료를 차단함(Q-05).
 - **핵심 문서 지도**: `서식_인벤토리.md`(Form ID F-001~F-057 목록, 개인정보 가능 문서 F-029/F-047/F-050 포함) · `입력데이터_사전.md`(공통/문서별/반복/계산/보호 필드 정의) · `서식_매핑표.md`(F-001~F-052 출력 매핑, F-053~F-057은 읽기 전용) · `결정사항.md`(범위·대표 POC 3종 확정 근거) · `엑셀_벤치마크_분석.md`(기존 XLSM 정적분석) · `kordoc_기술검증.md`(HWPX 파싱/치환 기술검증) · `로그.md`(세션 재개 기록, `/clear` 전 필수 갱신).
-- **Excel 생성 경로**: `scripts/create_excel_mvp.ps1`이 인벤토리를 파싱해 Excel COM으로 8개 시트(`01_교복구매_워크플로우`/`02_기초자료_입력`/`03_서식선택_출력`/`DB`/`Ref_data`/`학교정보`/`서식Metadata`/`사용설명서`) 구조를 생성함. 현재는 구조 초안 수준이며, 기준 XLSM 수준의 실무 입력화면·자동반영·선택출력 기능은 미구현 상태임([test.md](test.md) X-06 FAIL 참고).
+- **Excel 생성 경로(v1, 활성)**: `scripts/build_excel_v1_structure.ps1`이 Excel COM으로 시트를 순서대로 생성함 — `사용설명서`·`기초자료입력`·`DB`(및 `DB_품목`/`DB_업체`/`DB_위원`/`DB_평가` 반복행 정규화 시트)·`서식선택_출력`(F-001~F-052 선택 목록)·Form ID별 서식 시트(`F-007_구매요청기안문`/`F-024_단가비율표`/`F-014_평가항목배점기준` 등, 계속 추가 중)·`학교정보`·`학교검색`·`절차안내`·`계약방법안내`. 이어서 `build_excel_v1_vba.ps1`이 매크로(신규/초기화/저장/수정/불러오기, 저장 직전 전체 DB 재검증 등)를 주입하고 `verify_excel_v1.ps1`이 외부 링크·연결·`#REF!` 이름 정의 0건과 골든 시나리오를 사본에서 검사함. 미구현 Form ID·현재 통과/실패 상세는 [test.md](test.md)를 확인함(하드코딩하지 않음).
 - **원본 자산(수정 금지)**: 루트의 `20230808_용역계약갈라잡이(디깅모멘텀)_이행원.xlsm`, `교복4차 (2)/*.hwpx`. 모든 파생 작업은 `_workspace/`와 `artifacts/`에서만 수행함.
 
 ## 하네스: 교복구매 길라잡이
@@ -66,3 +72,4 @@
 | 날짜 | 변경 | 대상 | 사유 |
 |---|---|---|---|
 | 2026-09-15 | 교복구매 길라잡이 하네스 초기 구성 | `.claude/agents`, `.claude/skills`, `CLAUDE.md` | 서식 분석, HWPX 자동화, XLSM 구현, 품질 검증 역할을 분리하고 /goal 운영 기준을 등록함 |
+| 2026-09-16 | `/init` 재점검: 표준 헤더 추가, Excel 명령·생성 경로를 v1 활성 스크립트(`build_excel_v1_structure.ps1` 등)로 갱신, Phase/기능 상태 하드코딩 제거 | `CLAUDE.md` | `create_excel_mvp.ps1` 기반 구버전 명령이 실제 활성 경로와 달라져 있었고, 상태 서술이 `task.md`/`test.md`와 어긋날 위험이 있어 최신화함 |

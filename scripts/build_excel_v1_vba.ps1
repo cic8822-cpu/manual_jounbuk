@@ -5,7 +5,16 @@ $defaultTargetPath = Join-Path $root 'artifacts\excel\build.xlsm'
 $targetPath = if ([string]::IsNullOrWhiteSpace($env:UNIFORM_EXCEL_BUILD_PATH)) { $defaultTargetPath } else { $env:UNIFORM_EXCEL_BUILD_PATH }
 $logPath = Join-Path $root '_workspace\03_excel\build_vba_log.txt'
 
+# Quit()·ReleaseComObject·GC만으로는 남은 스크립트 지역변수가 COM 참조를 계속
+# 살려 두어 EXCEL.EXE가 좀비로 남을 수 있음. 생성 전후 프로세스 목록을 비교해
+# 새로 뜬 PID를 기록해 두고, finally에서 종료가 확인되지 않으면 이 PID만
+# 강제 종료해 고아 프로세스가 다음 실행을 막지 않게 함.
+$excelPidsBefore = @(Get-Process -Name EXCEL -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
 $excel = New-Object -ComObject Excel.Application
+Start-Sleep -Milliseconds 300
+$excelProcessId = Get-Process -Name EXCEL -ErrorAction SilentlyContinue |
+    Where-Object { $excelPidsBefore -notcontains $_.Id } |
+    Select-Object -First 1 -ExpandProperty Id
 $excel.Visible = $false
 $excel.DisplayAlerts = $false
 $log = New-Object System.Text.StringBuilder
@@ -275,6 +284,44 @@ Public Function 검증_업체중복경고() As Boolean
     검증_업체중복경고 = False
 End Function
 
+Private Function 정량평가행검증(ByVal wsIn As Worksheet, ByVal showMessage As Boolean) As Boolean
+    ' 업체명만 먼저 등록하고 정량평가 점수는 평가 이후 입력하는 것이 정상 흐름이므로,
+    ' 점수 4칸이 모두 비어 있으면 통과시키고, 하나라도 있으면 4칸 모두·범위까지 완전해야 저장을 허용한다.
+    ' (F-015 출력 가능 여부는 별도의 F015업체행완전한가에서 더 엄격하게 판단한다.)
+    Dim sourceRow As Long, vendorName As String
+    Dim v1 As Variant, v2 As Variant, v3 As Variant, v4 As Variant
+    Dim hasAnyScore As Boolean, hasAllScore As Boolean
+    정량평가행검증 = True
+    For sourceRow = 44 To 53
+        vendorName = Trim(wsIn.Cells(sourceRow, 2).Value & "")
+        v1 = wsIn.Cells(sourceRow, 3).Value
+        v2 = wsIn.Cells(sourceRow, 4).Value
+        v3 = wsIn.Cells(sourceRow, 5).Value
+        v4 = wsIn.Cells(sourceRow, 6).Value
+        hasAnyScore = Trim(v1 & "") <> "" Or Trim(v2 & "") <> "" Or Trim(v3 & "") <> "" Or Trim(v4 & "") <> ""
+        hasAllScore = Trim(v1 & "") <> "" And Trim(v2 & "") <> "" And Trim(v3 & "") <> "" And Trim(v4 & "") <> ""
+        If hasAnyScore And vendorName = "" Then
+            If showMessage Then MsgBox "업체 " & (sourceRow - 43) & "행(F-015)은 업체명 없이 정량평가 점수만 입력할 수 없습니다.", vbExclamation
+            정량평가행검증 = False
+            Exit Function
+        ElseIf hasAnyScore And Not hasAllScore Then
+            If showMessage Then MsgBox "업체 " & (sourceRow - 43) & "행(F-015)은 수행경험·공인인증·거리적접근성·상한가격 점수를 모두 입력하거나 모두 비워 두세요.", vbExclamation
+            정량평가행검증 = False
+            Exit Function
+        ElseIf hasAllScore Then
+            If Not 정수범위(v1, 0, 10) Or Not 정수범위(v2, 0, 10) Or Not 정수범위(v3, 0, 15) Or Not 정수범위(v4, 0, 15) Then
+                If showMessage Then MsgBox "업체 " & (sourceRow - 43) & "행(F-015)은 수행경험(0~10)·공인인증(0~10)·거리적접근성(0~15)·상한가격(0~15) 범위의 정수만 입력하세요.", vbExclamation
+                정량평가행검증 = False
+                Exit Function
+            End If
+        End If
+    Next sourceRow
+End Function
+
+Public Function 검증_정량평가행검증() As Boolean
+    검증_정량평가행검증 = 정량평가행검증(Sheets("기초자료입력"), False)
+End Function
+
 Private Function 위원행검증(ByVal wsIn As Worksheet, ByVal showMessage As Boolean) As Boolean
     Dim sourceRow As Long, roleName As String, maskedLabel As String
     Dim hasRole As Boolean, hasMask As Boolean
@@ -351,7 +398,7 @@ Private Function 마스킹식별표시허용(ByVal maskedLabel As String) As Boo
         maskedLabel = "평가위원 ○*" Or maskedLabel = "평가위원 *○"
 End Function
 
-Private Function 정수범위(ByVal value As Variant, ByVal minimum As Long, ByVal maximum As Long) As Boolean
+Public Function 정수범위(ByVal value As Variant, ByVal minimum As Long, ByVal maximum As Long) As Boolean
     If Not IsNumeric(value) Then Exit Function
     If CDbl(value) <> Fix(CDbl(value)) Then Exit Function
     정수범위 = CDbl(value) >= minimum And CDbl(value) <= maximum
@@ -540,6 +587,10 @@ Private Sub 업체복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsVendor
         End If
     Next sourceRow
 End Sub
+
+' 정량평가복사_기초자료_DB는 저장하기_실행/수정하기_실행 연동 중 원인 미상의 무한 대기가 재현되어
+' 제거함(_workspace/03_excel/F-015_구현검증.md 5절 참고). F-015 점수는 저장·불러오기와 연동되지
+' 않으며, 출력 직전 기초자료입력에 입력한 값만 검증_F015출력가능()·F015업체행완전한가()가 직접 읽는다.
 
 Private Sub 위원복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsCommittee As Worksheet, ByVal seq As Long)
     Dim rowIndex As Long, sourceRow As Long, targetRow As Long
@@ -748,7 +799,7 @@ Private Sub 불러오기_순번(ByVal seq As Long, ByVal showMessage As Boolean)
             End If
         End If
     Next itemRow
-    wsIn.Range("B44:B53").ClearContents
+    wsIn.Range("B44:F53").ClearContents
     For itemRow = 2 To wsVendors.Cells(wsVendors.Rows.Count, 1).End(xlUp).Row
         If wsVendors.Cells(itemRow, 1).Value = seq Then
             inputRow = 43 + CLng(wsVendors.Cells(itemRow, 2).Value)
@@ -776,13 +827,15 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
     lastRow = wsSel.Cells(wsSel.Rows.Count, 2).End(xlUp).Row
 
     Dim tmp() As String
-    ReDim tmp(1 To lastRow)
+    ReDim tmp(1 To lastRow + 10)   ' F-015는 업체별로 최대 10쪽까지 늘어날 수 있어 여유를 둠
     Dim cnt As Long
     cnt = 0
-    Dim skippedNotReady As Long, skippedDeferred As Long, skippedInvalidF024 As Long
+    Dim skippedNotReady As Long, skippedDeferred As Long, skippedInvalidF024 As Long, skippedInvalidF014 As Long, skippedInvalidF015 As Long
     skippedNotReady = 0
     skippedDeferred = 0
     skippedInvalidF024 = 0
+    skippedInvalidF014 = 0
+    skippedInvalidF015 = 0
 
     Dim r As Long
     For r = 5 To lastRow
@@ -791,6 +844,23 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
             status = wsSel.Cells(r, 5).Value
             If wsSel.Cells(r, 2).Value = "F-024" And Not 검증_F024출력가능() Then
                 skippedInvalidF024 = skippedInvalidF024 + 1
+            ElseIf wsSel.Cells(r, 2).Value = "F-014" And Not 검증_F014출력가능() Then
+                skippedInvalidF014 = skippedInvalidF014 + 1
+            ElseIf wsSel.Cells(r, 2).Value = "F-015" Then
+                If Not 검증_F015출력가능() Then
+                    skippedInvalidF015 = skippedInvalidF015 + 1
+                Else
+                    Dim vendorRow As Long, addedAny As Boolean
+                    addedAny = False
+                    For vendorRow = 44 To 53
+                        If F015업체행완전한가(vendorRow) Then
+                            cnt = cnt + 1
+                            tmp(cnt) = F015임시시트생성(vendorRow - 43)
+                            addedAny = True
+                        End If
+                    Next vendorRow
+                    If Not addedAny Then skippedInvalidF015 = skippedInvalidF015 + 1
+                End If
             ElseIf status = "Y" Then
                 cnt = cnt + 1
                 tmp(cnt) = wsSel.Cells(r, 6).Value
@@ -804,14 +874,14 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
 
     If cnt = 0 Then
         MsgBox "구현된 서식이 선택되지 않았습니다." & vbCrLf & _
-             "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-024 입력 오류·빈 품목·6품목 초과: " & skippedInvalidF024 & "건", vbExclamation
+             "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-014 필수값·평가행 오류: " & skippedInvalidF014 & "건, F-015 업체·정량평가 오류: " & skippedInvalidF015 & "건, F-024 입력 오류·빈 품목·6품목 초과: " & skippedInvalidF024 & "건", vbExclamation
         선택된시트목록 = 0
         Exit Function
     End If
 
-    If skippedNotReady > 0 Or skippedDeferred > 0 Or skippedInvalidF024 > 0 Then
+    If skippedNotReady > 0 Or skippedDeferred > 0 Or skippedInvalidF024 > 0 Or skippedInvalidF014 > 0 Or skippedInvalidF015 > 0 Then
         MsgBox "일부 선택 서식은 아직 준비되지 않아 제외합니다." & vbCrLf & _
-               "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-024 입력 오류·빈 품목·6품목 초과: " & skippedInvalidF024 & "건", vbInformation
+               "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-014 필수값·평가행 오류: " & skippedInvalidF014 & "건, F-015 업체·정량평가 오류: " & skippedInvalidF015 & "건, F-024 입력 오류·빈 품목·6품목 초과: " & skippedInvalidF024 & "건", vbInformation
     End If
 
     ReDim outNames(1 To cnt)
@@ -828,6 +898,56 @@ Public Function 검증_F024출력가능() As Boolean
     검증_F024출력가능 = 검증_품목행검증() And itemCount >= 1 And itemCount <= 6
 End Function
 
+Public Function 검증_F014출력가능() As Boolean
+    Dim scoreCount As Long
+    scoreCount = Application.WorksheetFunction.CountA(Sheets("기초자료입력").Range("B72:B81"))
+    검증_F014출력가능 = 검증_필수값검증() And 검증_평가행검증() And scoreCount >= 1 And scoreCount <= 10
+End Function
+
+Public Function 검증_F015출력가능() As Boolean
+    Dim vendorRow As Long, hasCompleteVendor As Boolean
+    If Not 검증_정량평가행검증() Then Exit Function
+    hasCompleteVendor = False
+    For vendorRow = 44 To 53
+        If F015업체행완전한가(vendorRow) Then
+            hasCompleteVendor = True
+            Exit For
+        End If
+    Next vendorRow
+    검증_F015출력가능 = 검증_필수값검증() And hasCompleteVendor
+End Function
+
+Private Function F015업체행완전한가(ByVal sourceRow As Long) As Boolean
+    Dim wsIn As Worksheet
+    Set wsIn = Sheets("기초자료입력")
+    F015업체행완전한가 = Trim(wsIn.Cells(sourceRow, 2).Value & "") <> "" And _
+        Trim(wsIn.Cells(sourceRow, 3).Value & "") <> "" And Trim(wsIn.Cells(sourceRow, 4).Value & "") <> "" And _
+        Trim(wsIn.Cells(sourceRow, 5).Value & "") <> "" And Trim(wsIn.Cells(sourceRow, 6).Value & "") <> "" And _
+        정수범위(wsIn.Cells(sourceRow, 3).Value, 0, 10) And 정수범위(wsIn.Cells(sourceRow, 4).Value, 0, 10) And _
+        정수범위(wsIn.Cells(sourceRow, 5).Value, 0, 15) And 정수범위(wsIn.Cells(sourceRow, 6).Value, 0, 15)
+End Function
+
+Private Function F015임시시트생성(ByVal vendorSlot As Long) As String
+    Dim wsF15 As Worksheet, wsTemp As Worksheet
+    Set wsF15 = Sheets("F-015_정량적평가")
+    wsF15.Copy After:=Sheets(Sheets.Count)
+    Set wsTemp = Sheets(Sheets.Count)
+    wsTemp.Name = "F015_임시_" & vendorSlot & "_" & Format(Now, "hhnnss")
+    wsTemp.Range("I3").Value = vendorSlot
+    F015임시시트생성 = wsTemp.Name
+End Function
+
+Private Sub F015임시시트정리(ByRef names() As String)
+    Dim i As Long
+    On Error Resume Next
+    Application.DisplayAlerts = False
+    For i = LBound(names) To UBound(names)
+        If Left(names(i), 5) = "F015_" Then Sheets(names(i)).Delete
+    Next i
+    Application.DisplayAlerts = True
+    On Error GoTo 0
+End Sub
+
 Sub 선택서식_인쇄미리보기()
     Dim names() As String
     Dim n As Long
@@ -835,6 +955,7 @@ Sub 선택서식_인쇄미리보기()
     If n = 0 Then Exit Sub
     ThisWorkbook.Sheets(names).Select
     ActiveWindow.SelectedSheets.PrintPreview
+    Call F015임시시트정리(names)
 End Sub
 
 Sub 선택서식_PDF저장()
@@ -860,6 +981,7 @@ Private Sub 선택서식_PDF저장_실행(ByVal showMessage As Boolean)
 
     ThisWorkbook.Sheets(names).Select
     ActiveSheet.ExportAsFixedFormat Type:=xlTypePDF, Filename:=fileName, Quality:=xlQualityStandard, IncludeDocProperties:=True, IgnorePrintAreas:=False, OpenAfterPublish:=False
+    Call F015임시시트정리(names)
 
     If showMessage Then MsgBox "PDF로 저장되었습니다:" & vbCrLf & fileName, vbInformation
 End Sub
@@ -1140,6 +1262,15 @@ End Sub
     [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
     [GC]::Collect()
     [GC]::WaitForPendingFinalizers()
+    [GC]::Collect()
+    [GC]::WaitForPendingFinalizers()
+    if ($excelProcessId) {
+        Start-Sleep -Milliseconds 500
+        if (Get-Process -Id $excelProcessId -ErrorAction SilentlyContinue) {
+            Stop-Process -Id $excelProcessId -Force -ErrorAction SilentlyContinue
+            L "PID $excelProcessId Excel 프로세스가 Quit() 이후에도 남아 있어 강제 종료함"
+        }
+    }
 }
 
 [System.IO.File]::WriteAllText($logPath, $log.ToString(), [System.Text.UTF8Encoding]::new($false))
