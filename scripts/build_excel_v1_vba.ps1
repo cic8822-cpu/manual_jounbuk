@@ -447,7 +447,7 @@ Private Function DB레코드존재(ByVal wsDB As Worksheet, ByVal seq As Long) A
 End Function
 
 Private Function 저장경계검증(ByRef reason As String) As Boolean
-    Dim wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet
+    Dim wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet, wsQuant As Worksheet
     Dim rowIndex As Long, lastRow As Long, seq As Long
     Dim vendorName As String, roleName As String, maskedLabel As String, itemName As String
     Set wsDB = Sheets("DB")
@@ -455,6 +455,7 @@ Private Function 저장경계검증(ByRef reason As String) As Boolean
     Set wsVendors = Sheets("DB_업체")
     Set wsCommittee = Sheets("DB_위원")
     Set wsScore = Sheets("DB_평가")
+    Set wsQuant = Sheets("DB_정량평가")
 
     lastRow = 마지막사용행(wsDB)
     For rowIndex = 2 To lastRow
@@ -531,6 +532,20 @@ Private Function 저장경계검증(ByRef reason As String) As Boolean
             End If
         End If
     Next rowIndex
+
+    lastRow = 마지막사용행(wsQuant)
+    For rowIndex = 2 To lastRow
+        If Application.WorksheetFunction.CountA(wsQuant.Range("A" & rowIndex & ":F" & rowIndex)) > 0 Then
+            If Not 정수범위(wsQuant.Cells(rowIndex, 1).Value, 1, 2147483647) Or _
+               Not DB레코드존재(wsDB, CLng(Val(wsQuant.Cells(rowIndex, 1).Value))) Or _
+               Not 정수범위(wsQuant.Cells(rowIndex, 2).Value, 1, 10) Or _
+               Not 정수범위(wsQuant.Cells(rowIndex, 3).Value, 0, 10) Or Not 정수범위(wsQuant.Cells(rowIndex, 4).Value, 0, 10) Or _
+               Not 정수범위(wsQuant.Cells(rowIndex, 5).Value, 0, 15) Or Not 정수범위(wsQuant.Cells(rowIndex, 6).Value, 0, 15) Then
+                reason = "DB_정량평가 " & rowIndex & "행은 연결된 레코드와 정상 범위의 수행경험·공인인증·거리적접근성·상한가격 점수를 모두 가져야 합니다."
+                Exit Function
+            End If
+        End If
+    Next rowIndex
     저장경계검증 = True
 End Function
 
@@ -588,9 +603,27 @@ Private Sub 업체복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsVendor
     Next sourceRow
 End Sub
 
-' 정량평가복사_기초자료_DB는 저장하기_실행/수정하기_실행 연동 중 원인 미상의 무한 대기가 재현되어
-' 제거함(_workspace/03_excel/F-015_구현검증.md 5절 참고). F-015 점수는 저장·불러오기와 연동되지
-' 않으며, 출력 직전 기초자료입력에 입력한 값만 검증_F015출력가능()·F015업체행완전한가()가 직접 읽는다.
+Private Sub 정량평가복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsQuant As Worksheet, ByVal seq As Long)
+    Dim rowIndex As Long, sourceRow As Long, targetRow As Long, vendorName As String
+    For rowIndex = wsQuant.Cells(wsQuant.Rows.Count, 1).End(xlUp).Row To 2 Step -1
+        If wsQuant.Cells(rowIndex, 1).Value = seq Then wsQuant.Rows(rowIndex).Delete
+    Next rowIndex
+
+    targetRow = wsQuant.Cells(wsQuant.Rows.Count, 1).End(xlUp).Row + 1
+    If targetRow < 2 Then targetRow = 2
+    For sourceRow = 44 To 53
+        vendorName = Trim(wsIn.Cells(sourceRow, 2).Value & "")
+        If vendorName <> "" And Trim(wsIn.Cells(sourceRow, 3).Value & "") <> "" Then
+            wsQuant.Cells(targetRow, 1).Value = seq
+            wsQuant.Cells(targetRow, 2).Value = sourceRow - 43
+            wsQuant.Cells(targetRow, 3).Value = wsIn.Cells(sourceRow, 3).Value
+            wsQuant.Cells(targetRow, 4).Value = wsIn.Cells(sourceRow, 4).Value
+            wsQuant.Cells(targetRow, 5).Value = wsIn.Cells(sourceRow, 5).Value
+            wsQuant.Cells(targetRow, 6).Value = wsIn.Cells(sourceRow, 6).Value
+            targetRow = targetRow + 1
+        End If
+    Next sourceRow
+End Sub
 
 Private Sub 위원복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsCommittee As Worksheet, ByVal seq As Long)
     Dim rowIndex As Long, sourceRow As Long, targetRow As Long
@@ -639,15 +672,17 @@ End Sub
 
 Private Sub 저장하기_실행(ByVal showMessage As Boolean)
     If Not 필수값검증() Then Exit Sub
-    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet, wsQuant As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
     Set wsItems = Sheets("DB_품목")
     Set wsVendors = Sheets("DB_업체")
     Set wsCommittee = Sheets("DB_위원")
     Set wsScore = Sheets("DB_평가")
+    Set wsQuant = Sheets("DB_정량평가")
     If Not 품목행검증(wsIn, showMessage) Then Exit Sub
     If Not 업체행검증(wsIn, showMessage) Then Exit Sub
+    If Not 정량평가행검증(wsIn, showMessage) Then Exit Sub
     If Not 위원행검증(wsIn, showMessage) Then Exit Sub
     If Not 평가행검증(wsIn, showMessage) Then Exit Sub
     If showMessage And 검증_업체중복경고() Then MsgBox "중복된 업체명이 있습니다. 실제 동일 업체인지 확인한 뒤 저장하세요.", vbExclamation
@@ -668,6 +703,7 @@ Private Sub 저장하기_실행(ByVal showMessage As Boolean)
     Call 필드복사_기초자료_DB(wsIn, wsDB, newRow)
     Call 품목복사_기초자료_DB(wsIn, wsItems, seq)
     Call 업체복사_기초자료_DB(wsIn, wsVendors, seq)
+    Call 정량평가복사_기초자료_DB(wsIn, wsQuant, seq)
     Call 위원복사_기초자료_DB(wsIn, wsCommittee, seq)
     Call 평가복사_기초자료_DB(wsIn, wsScore, seq)
 
@@ -685,15 +721,17 @@ End Sub
 
 Private Sub 수정하기_실행(ByVal showMessage As Boolean)
     If Not 필수값검증() Then Exit Sub
-    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet, wsQuant As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
     Set wsItems = Sheets("DB_품목")
     Set wsVendors = Sheets("DB_업체")
     Set wsCommittee = Sheets("DB_위원")
     Set wsScore = Sheets("DB_평가")
+    Set wsQuant = Sheets("DB_정량평가")
     If Not 품목행검증(wsIn, showMessage) Then Exit Sub
     If Not 업체행검증(wsIn, showMessage) Then Exit Sub
+    If Not 정량평가행검증(wsIn, showMessage) Then Exit Sub
     If Not 위원행검증(wsIn, showMessage) Then Exit Sub
     If Not 평가행검증(wsIn, showMessage) Then Exit Sub
     If showMessage And 검증_업체중복경고() Then MsgBox "중복된 업체명이 있습니다. 실제 동일 업체인지 확인한 뒤 수정하세요.", vbExclamation
@@ -714,6 +752,7 @@ Private Sub 수정하기_실행(ByVal showMessage As Boolean)
     Call 필드복사_기초자료_DB(wsIn, wsDB, r)
     Call 품목복사_기초자료_DB(wsIn, wsItems, CLng(seq))
     Call 업체복사_기초자료_DB(wsIn, wsVendors, CLng(seq))
+    Call 정량평가복사_기초자료_DB(wsIn, wsQuant, CLng(seq))
     Call 위원복사_기초자료_DB(wsIn, wsCommittee, CLng(seq))
     Call 평가복사_기초자료_DB(wsIn, wsScore, CLng(seq))
     If showMessage Then MsgBox "수정되었습니다. (순번 " & seq & ")", vbInformation
@@ -735,13 +774,14 @@ Public Sub 검증_첫레코드불러오기()
 End Sub
 
 Private Sub 불러오기_순번(ByVal seq As Long, ByVal showMessage As Boolean)
-    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet, wsQuant As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
     Set wsItems = Sheets("DB_품목")
     Set wsVendors = Sheets("DB_업체")
     Set wsCommittee = Sheets("DB_위원")
     Set wsScore = Sheets("DB_평가")
+    Set wsQuant = Sheets("DB_정량평가")
     Dim r As Long
     r = seq + 1
     If wsDB.Cells(r, 1).Value <> seq Then
@@ -804,6 +844,17 @@ Private Sub 불러오기_순번(ByVal seq As Long, ByVal showMessage As Boolean)
         If wsVendors.Cells(itemRow, 1).Value = seq Then
             inputRow = 43 + CLng(wsVendors.Cells(itemRow, 2).Value)
             If inputRow >= 44 And inputRow <= 53 Then wsIn.Cells(inputRow, 2).Value = wsVendors.Cells(itemRow, 3).Value
+        End If
+    Next itemRow
+    For itemRow = 2 To wsQuant.Cells(wsQuant.Rows.Count, 1).End(xlUp).Row
+        If wsQuant.Cells(itemRow, 1).Value = seq Then
+            inputRow = 43 + CLng(wsQuant.Cells(itemRow, 2).Value)
+            If inputRow >= 44 And inputRow <= 53 Then
+                wsIn.Cells(inputRow, 3).Value = wsQuant.Cells(itemRow, 3).Value
+                wsIn.Cells(inputRow, 4).Value = wsQuant.Cells(itemRow, 4).Value
+                wsIn.Cells(inputRow, 5).Value = wsQuant.Cells(itemRow, 5).Value
+                wsIn.Cells(inputRow, 6).Value = wsQuant.Cells(itemRow, 6).Value
+            End If
         End If
     Next itemRow
     wsIn.Range("H1").Value = seq
@@ -1166,7 +1217,7 @@ Private Sub Workbook_Open()
     ' UserInterfaceOnly 보호 설정은 파일을 다시 열면 유지되지 않으므로, 매크로 허용 후 다시 적용한다.
     ' 비밀번호는 사용하지 않으며 일반 사용자의 직접 편집만 제한한다.
     Dim internalName As Variant
-    For Each internalName In Array("DB", "DB_품목", "DB_업체", "DB_위원", "DB_평가")
+    For Each internalName In Array("DB", "DB_품목", "DB_업체", "DB_위원", "DB_평가", "DB_정량평가")
         Sheets(CStr(internalName)).Protect Password:="", DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True
     Next internalName
 End Sub
