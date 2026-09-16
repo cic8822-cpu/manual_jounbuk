@@ -23,7 +23,7 @@ F-024 수량 합계(D15) 계산값: 204, 비율(E9/E10): 55.6%/44.4%
 PASS: F-024 수량 합계와 단가비율이 입력값을 참조함
 PASS: F-024 품목명이 입력 반복행을 참조함
 매크로 선택서식_PDF저장(): 정상 실행
-PDF 생성 확인: C:\Users\최익창\Downloads\나연수\artifacts\excel\_validation\output\선택서식_20260915_232459.pdf (91.3 KB)
+PDF 생성 확인: C:\Users\user\Downloads\나연수_26.9.10\artifacts\excel\_validation\output\선택서식_20260916_094718.pdf (91.3 KB)
 PASS: 선택 서식 PDF가 비어 있지 않음
 PASS: 필수값이 비어 있으면 저장 검증이 거부됨
 테스트 데이터 정리(기초자료입력 초기화, DB 2행 삭제) 완료
