@@ -1,7 +1,8 @@
 ﻿# P3-01 클린룸 재구현 — 검증: 외부 링크/연결/#REF! 0건, 매크로 실행, PDF 출력, A4 1쪽 재확인
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$targetPath = Join-Path $root 'artifacts\excel\교복구매_길라잡이_Excel_v1.xlsm'
+$defaultTargetPath = Join-Path $root 'artifacts\excel\build.xlsm'
+$targetPath = if ([string]::IsNullOrWhiteSpace($env:UNIFORM_EXCEL_BUILD_PATH)) { $defaultTargetPath } else { $env:UNIFORM_EXCEL_BUILD_PATH }
 $logPath = Join-Path $root '_workspace\03_excel\verify_v1_log.txt'
 $validationDirectory = Join-Path $root 'artifacts\excel\_validation'
 $validationPath = Join-Path $validationDirectory '교복구매_길라잡이_Excel_v1.xlsm'
@@ -68,9 +69,17 @@ try {
 
     # 4. 시트 목록
     L "시트 목록: $((@($wb.Worksheets) | ForEach-Object { $_.Name }) -join ', ')"
-    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', '서식선택_출력', 'F-007_구매요청기안문', 'F-024_단가비율표', '학교정보')
+    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', '서식선택_출력', 'F-007_구매요청기안문', 'F-024_단가비율표', '학교정보', '학교검색', '절차안내')
     $sheetNames = @($wb.Worksheets | ForEach-Object { $_.Name })
-    Assert-Check ($sheetNames.Count -eq 8 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) '필수 8개 시트가 모두 존재함'
+    Assert-Check ($sheetNames.Count -eq 10 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) '필수 10개 시트가 모두 존재함'
+
+    # 4a. 학교검색 및 절차안내 정적 구조
+    $wsSchool = $wb.Worksheets.Item('학교정보')
+    Assert-Check ($wsSchool.Range('A123').Value2 -eq '학교정보 표본 행 수' -and $wsSchool.Range('B123').Text -eq '120') '학교정보 공개 기관정보 표본이 정확히 120행임'
+    $wsSearch = $wb.Worksheets.Item('학교검색')
+    Assert-Check ($wsSearch.Range('A1').Value2 -match '학교정보 검색' -and $wsSearch.Range('B3,D3,F3').Interior.Color -eq 16777164) '학교명·지역·급별 검색 조건 UI가 존재함'
+    $wsFlow = $wb.Worksheets.Item('절차안내')
+    Assert-Check ($wsFlow.Range('A5:A13').Count -eq 9 -and $wsFlow.Range('D5').Value2 -eq 'F-001' -and $wsFlow.Range('D13').Value2 -eq 'F-044') '교복구매 9단계와 대표 Form ID 이동값이 존재함'
 
     # 5. A4 1쪽 자연 충족 재확인 (F-007, F-024)
     foreach ($sn in @("F-007_구매요청기안문","F-024_단가비율표")) {
@@ -115,11 +124,23 @@ try {
     L "DB_품목 기록 확인: $($wsItems.Cells.Item(2, 1).Value2)/$($wsItems.Cells.Item(2, 3).Value2), $($wsItems.Cells.Item(3, 1).Value2)/$($wsItems.Cells.Item(3, 3).Value2)"
     Assert-Check ($wsItems.Cells.Item(2, 1).Value2 -eq 1 -and $wsItems.Cells.Item(2, 3).Value2 -eq '동복 상의' -and $wsItems.Cells.Item(3, 1).Value2 -eq 1 -and $wsItems.Cells.Item(3, 3).Value2 -eq '동복 하의') '저장하기()가 복수 품목 반복행을 DB_품목에 기록함'
     $wsIn.Range('B31:D31').ClearContents()
+    $wsIn.Range('C31').Value2 = 1
+    Assert-Check (-not [bool]$excel.Run('검증_품목행검증')) '품목명 없는 수량·단가 고아 입력행을 거부함'
+    $wsIn.Range('B31:D31').ClearContents()
     $wsIn.Range('B31').Value2 = '불완전 품목'
     Assert-Check (-not [bool]$excel.Run('검증_품목행검증')) '수정 경로와 공유하는 품목 검증이 불완전 행을 거부함'
     Invoke-ValidationMacro -macroName '검증_저장하기'
     Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsDB.Cells.Item(3, 1).Value2)) '불완전 품목 행은 DB 저장이 거부됨'
     $wsIn.Range('B31:D31').ClearContents()
+    Assert-Check ([bool]$excel.Run('검증_품목행검증') -and $wsIn.Application.WorksheetFunction.CountA($wsIn.Range('B29:B38')) -ge 1 -and $wsIn.Application.WorksheetFunction.CountA($wsIn.Range('B29:B38')) -le 6) 'F-024 출력용 품목 입력이 완전하고 1~6개임'
+    Assert-Check ([bool]$excel.Run('검증_F024출력가능') -eq $true) 'F-024 선택 출력이 정상 품목 1~6개를 허용함'
+    for ($r = 31; $r -le 35; $r++) {
+        $wsIn.Cells.Item($r, 2).Value2 = "추가 품목 $r"
+        $wsIn.Cells.Item($r, 3).Value2 = 1
+        $wsIn.Cells.Item($r, 4).Value2 = 1000
+    }
+    Assert-Check ([bool]$excel.Run('검증_F024출력가능') -eq $false) 'F-024 선택 출력이 완전한 7개 품목을 거부함'
+    $wsIn.Range('B31:D35').ClearContents()
 
     # F-007/F-024 수식이 HWPX 원문 대조 후 확정한 v2 배치에서 기초자료입력을 정상 참조하는지 확인
     $wsF7 = $wb.Worksheets.Item("F-007_구매요청기안문")
@@ -129,6 +150,28 @@ try {
     L "F-024 수량 합계(D15) 계산값: $($wsF24.Range('D15').Value2), 비율(E9/E10): $($wsF24.Range('E9').Value2)/$($wsF24.Range('E10').Value2)"
     Assert-Check ($wsF24.Range('D15').Value2 -eq 204 -and $wsF24.Range('E9').Text -eq '55.6%' -and $wsF24.Range('E10').Text -eq '44.4%') 'F-024 수량 합계와 단가비율이 입력값을 참조함'
     Assert-Check ($wsF24.Range('C9').Value2 -eq '동복 상의' -and $wsF24.Range('C10').Value2 -eq '동복 하의') 'F-024 품목명이 입력 반복행을 참조함'
+
+    # 6a. 학교명·지역·급별 검색 및 선택 결과 C4 반영 (공개 기관정보 표본, 검증 사본만 사용)
+    # 원본 표본의 외부 쿼리 캐시에 검색 열 값이 비어 있을 수 있으므로, 검증 사본에만 마스킹 기관정보를 넣어
+    # 학교명·지역·급별 조건의 복합 검색과 C4 반영 흐름을 독립적으로 재현함.
+    $wsSchool.Cells.Item(2, 2).Value2 = '검증지역'
+    $wsSchool.Cells.Item(2, 3).Value2 = '초등'
+    $wsSchool.Cells.Item(2, 5).Value2 = '검증학교'
+    $wsSearch.Range('B3').Value2 = '검증학교'
+    $wsSearch.Range('D3').Value2 = '검증지역'
+    $wsSearch.Range('F3').Value2 = '초등'
+    Invoke-ValidationMacro -macroName '검증_학교검색_실행'
+    Assert-Check ($wsSearch.Cells.Item(7, 4).Value2 -eq '검증학교') '학교명·지역·급별 복합 검색 결과가 생성됨'
+    $wsSearch.Activate()
+    $wsSearch.Cells.Item(7, 1).Select()
+    Invoke-ValidationMacro -macroName '검증_선택학교_기초자료반영'
+    Assert-Check ($wsIn.Range('C4').Value2 -eq '검증학교') '선택 학교명이 기초자료입력!C4에 반영됨'
+
+    # 6b. 9단계 절차 안내에서 단계별 대표 Form ID로 이동
+    $wsFlow.Activate()
+    $wsFlow.Cells.Item(7, 1).Select()  # 3단계: F-007
+    Invoke-ValidationMacro -macroName '검증_관련FormID로이동'
+    Assert-Check ($excel.ActiveSheet.Name -eq '서식선택_출력' -and $excel.ActiveCell.Value2 -eq 'F-007') '3단계 절차안내가 F-007 선택 행으로 이동함'
 
     # 7. 서식선택_출력 체크 + PDF 내보내기 매크로 테스트
     $wsSel = $wb.Worksheets.Item("서식선택_출력")

@@ -4,7 +4,10 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $outDir = Join-Path $root 'artifacts\excel'
 if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
-$outPath = Join-Path $outDir '교복구매_길라잡이_Excel_v1.xlsm'
+$defaultOutPath = Join-Path $outDir 'build.xlsm'
+$outPath = if ([string]::IsNullOrWhiteSpace($env:UNIFORM_EXCEL_BUILD_PATH)) { $defaultOutPath } else { $env:UNIFORM_EXCEL_BUILD_PATH }
+$outParent = Split-Path -Parent $outPath
+if (-not (Test-Path $outParent)) { New-Item -ItemType Directory -Path $outParent -Force | Out-Null }
 $sourcePath = Join-Path $root '20230808_용역계약갈라잡이(디깅모멘텀)_이행원.xlsm'
 $logPath = Join-Path $root '_workspace\03_excel\build_structure_log.txt'
 
@@ -19,6 +22,13 @@ function L($s) { [void]$log.AppendLine($s) }
 $wbNew = $null
 $wbSrc = $null
 try {
+    # 학교정보는 원본에서 읽기 전용으로 매번 추출함. 기존 생성본을 시드로 재사용하지 않아
+    # 이전 생성 실패·누락이 다음 빌드에 전파되지 않게 함.
+    $schoolSeedPath = $sourcePath
+    $wbSrc = $excel.Workbooks.Open($schoolSeedPath, [Type]::Missing, $true)
+    $wsSrcSchool = $wbSrc.Worksheets.Item("학교정보")
+    L "학교정보 시드 통합문서를 읽기 전용으로 열기 완료: $schoolSeedPath"
+
     # ---- 1. 새 워크북 생성 ----
     $wbNew = $excel.Workbooks.Add()
     while ($wbNew.Worksheets.Count -gt 1) { $wbNew.Worksheets.Item($wbNew.Worksheets.Count).Delete() }
@@ -33,12 +43,14 @@ try {
     $ws.Range("A3").Value2 = "1. 이 파일을 열면 Excel 상단에 '보안 경고 - 매크로 사용 안 함' 알림이 뜹니다. [콘텐츠 사용]을 눌러 매크로를 허용해야 입력·출력 기능이 동작합니다."
     $ws.Range("A4").Value2 = "2. '기초자료입력' 시트에 공통·사업·문서 정보와 품목을 입력한 뒤 [저장하기] 버튼을 누르면 'DB' 시트에 기록됩니다."
     $ws.Range("A5").Value2 = "3. '서식선택_출력' 시트에서 원하는 서식에 체크(TRUE)한 뒤 [선택 서식 인쇄 미리보기]/[선택 서식 PDF 저장] 버튼을 누릅니다."
-    $ws.Range("A6").Value2 = "4. 이 v1 버전은 F-007, F-024 두 서식만 완전히 구현되어 있습니다. 나머지 서식은 '구현상태' 열에 표시된 대로 순차 추가 예정입니다."
-    $ws.Range("A7").Value2 = "5. F-013(교복 디자인 및 규격서)은 표·이미지가 많은 다쪽(11쪽) 문서로, Excel보다 HWPX 경로가 적합하여 이번 버전에서는 보류하고 document-automation-engineer 협업 대상으로 남겼습니다."
-    $ws.Range("A9").Value2 = "원본 보호: 이 파일은 20230808_용역계약갈라잡이(디깅모멘텀)_이행원.xlsm 을 참고해 클린룸 방식으로 새로 작성한 사본이며, 원본 파일을 직접 열거나 수정하지 않습니다."
-    $ws.Range("A10").Value2 = "개인정보 경계: 이 파일은 학교·계약 단위 업무 정보만 다루며, 학생·학부모 개인정보 및 서명·직인 자동처리는 포함하지 않습니다."
+    $ws.Range("A6").Value2 = "4. '학교검색' 시트에서 학교명·지역·급별 조건을 입력하고 [검색] 후 결과 행을 선택해 [선택 학교를 기초자료에 반영]을 누르면 학교명이 기초자료입력!C4에 반영됩니다."
+    $ws.Range("A7").Value2 = "5. '절차안내' 시트는 교복구매 9단계와 단계별 관련 Form ID를 제공합니다. 단계 행을 선택하고 [관련 Form ID로 이동]을 누르면 서식선택_출력의 해당 Form ID로 이동합니다."
+    $ws.Range("A8").Value2 = "6. 이 v1 버전은 F-007, F-024 두 서식만 완전히 구현되어 있습니다. 나머지 서식은 '구현상태' 열에 표시된 대로 순차 추가 예정입니다."
+    $ws.Range("A9").Value2 = "7. F-013(교복 디자인 및 규격서)은 표·이미지가 많은 다쪽(11쪽) 문서로, Excel보다 HWPX 경로가 적합하여 이번 버전에서는 보류하고 document-automation-engineer 협업 대상으로 남겼습니다."
+    $ws.Range("A11").Value2 = "원본 보호: 이 파일은 20230808_용역계약갈라잡이(디깅모멘텀)_이행원.xlsm 을 참고해 클린룸 방식으로 새로 작성한 사본이며, 원본 파일을 직접 열거나 수정하지 않습니다."
+    $ws.Range("A12").Value2 = "개인정보 경계: 이 파일은 학교·계약 단위 업무 정보만 다루며, 학생·학부모 개인정보 및 서명·직인 자동처리는 포함하지 않습니다."
     $ws.Columns.Item("A").ColumnWidth = 110
-    $ws.Range("A3:A10").WrapText = $false
+    $ws.Range("A3:A12").WrapText = $false
 
     L "사용설명서 시트 작성 완료"
 
@@ -475,15 +487,18 @@ try {
     L "F-007/F-024 v2 원문 대조 레이아웃 및 수식 재적용 완료"
 
     # ---- 8. 학교정보 (원본 공개 데이터 표본 복사 — 학생·학부모 개인정보 아님) ----
-    $wbSrc = $excel.Workbooks.Open($sourcePath, [Type]::Missing, $true)
-    $wsSrcSchool = $wbSrc.Worksheets.Item("학교정보")
     $wsSchool = $wbNew.Worksheets.Add()
     $wsSchool.Name = "학교정보"
     $ws = $wsSchool
     $sampleRows = 120  # 표본(전체 1,516행 중 일부) — 전체가 필요하면 후속 작업에서 확장
-    $srcRange = $wsSrcSchool.Range("A1:G$($sampleRows + 1)")
-    $destRange = $ws.Range("A1:G$($sampleRows + 1)")
-    $srcRange.Copy($destRange)
+    # Excel 클립보드·배열 대입은 자동화 세션에서 대기하거나 형 변환에 실패할 수 있어
+    # 값만 셀 단위로 복사함. 이 표본은 검색용 공개 기관정보이므로 원본의 스타일·외부 연결은 이식하지 않음.
+    for ($sourceRow = 1; $sourceRow -le ($sampleRows + 1); $sourceRow++) {
+        for ($sourceColumn = 1; $sourceColumn -le 7; $sourceColumn++) {
+            $targetCell = $ws.Cells.Item($sourceRow, $sourceColumn)
+            $targetCell.Value2 = [string]$wsSrcSchool.Cells.Item($sourceRow, $sourceColumn).Text
+        }
+    }
     $ws.Rows.Item(1).Font.Bold = $true
     $ws.Columns.Item("A").ColumnWidth = 8
     $ws.Columns.Item("B").ColumnWidth = 10
@@ -492,7 +507,78 @@ try {
     $ws.Columns.Item("E").ColumnWidth = 24
     $ws.Columns.Item("F").ColumnWidth = 34
     $ws.Columns.Item("G").ColumnWidth = 14
+    $ws.Range("A123").Value2 = "학교정보 표본 행 수"
+    $ws.Range("B123").Value2 = [string]$sampleRows
+    $ws.Range("A123:B123").Font.Size = 8
     L "학교정보 시트 작성 완료 (원본 $sampleRows 행 표본 복사, 전체 1516행 중 일부 — 공개 기관정보, 개인정보 아님)"
+    $wbSrc.Close($false)
+    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($wbSrc) | Out-Null
+    $wbSrc = $null
+    L "학교정보 시드 통합문서 닫기 완료"
+
+    # ---- 9. 학교검색 (120행 공개 기관정보 표본의 VBA 검색 UI) ----
+    $wsSearch = $wbNew.Worksheets.Add()
+    $wsSearch.Name = "학교검색"
+    $ws = $wsSearch
+    $ws.Range("A1").Value2 = "학교정보 검색 (학교명 · 지역 · 급별)"
+    $ws.Range("A1").Font.Size = 13
+    $ws.Range("A1").Font.Bold = $true
+    $ws.Range("A2").Value2 = "노란색 조건칸에 하나 이상을 입력하고 [검색]을 누르십시오. 결과 행 하나를 선택한 뒤 [선택 학교를 기초자료에 반영]을 누르면 학교명만 기초자료입력!C4에 반영됩니다."
+    $ws.Range("A3").Value2 = "학교명"
+    $ws.Range("C3").Value2 = "지역"
+    $ws.Range("E3").Value2 = "급별"
+    $ws.Range("B3,D3,F3").Interior.Color = 16777164
+    $searchHeaders = @("번호", "지역", "급별", "학교명", "주소", "연락처")
+    for ($i = 0; $i -lt $searchHeaders.Count; $i++) { $ws.Cells.Item(6, $i + 1).Value2 = $searchHeaders[$i] }
+    $ws.Range("A6:F6").Font.Bold = $true
+    $ws.Range("A6:F6").Interior.Color = 15987699
+    $ws.Range("A6:F126").Borders.LineStyle = 1
+    $ws.Columns.Item("A").ColumnWidth = 8
+    $ws.Columns.Item("B").ColumnWidth = 12
+    $ws.Columns.Item("C").ColumnWidth = 10
+    $ws.Columns.Item("D").ColumnWidth = 26
+    $ws.Columns.Item("E").ColumnWidth = 38
+    $ws.Columns.Item("F").ColumnWidth = 16
+    L "학교검색 시트 작성 완료 (학교명/지역/급별 VBA 검색 및 C4 반영 UI)"
+
+    # ---- 10. 절차안내 (교복구매 9단계 → Form ID 이동 UI) ----
+    $wsFlow = $wbNew.Worksheets.Add()
+    $wsFlow.Name = "절차안내"
+    $ws = $wsFlow
+    $ws.Range("A1").Value2 = "교복 학교주관구매 9단계 절차 안내"
+    $ws.Range("A1").Font.Size = 13
+    $ws.Range("A1").Font.Bold = $true
+    $ws.Range("A2").Value2 = "단계 행을 선택하고 [관련 Form ID로 이동]을 누르면 서식선택_출력 시트의 대표 Form ID 행으로 이동합니다. 미구현 서식은 구현상태를 확인하고, 출력 전에는 행정실 담당자가 사실관계·계약조건·서식 상태를 최종 확인해야 합니다."
+    $flowHeaders = @("단계", "해야 할 일", "관련 Form ID", "이동 Form ID")
+    for ($i = 0; $i -lt $flowHeaders.Count; $i++) {
+        $ws.Cells.Item(4, $i + 1).Value2 = $flowHeaders[$i]
+        $ws.Cells.Item(4, $i + 1).Font.Bold = $true
+    }
+    $flowRows = @(
+        @("1. 준비", "교복선정위원회 구성 및 구매 추진계획 수립", "F-001~F-006", "F-001"),
+        @("2. 심의", "학교운영위원회 심의안 상정 및 심의", "F-006", "F-006"),
+        @("3. 구매요청·기초조사", "구매 요청, 사양·기초금액·계약방법을 확정", "F-007~F-010", "F-007"),
+        @("4. 입찰공고", "사전규격공개, 입찰공고, 특수조건 및 규격서를 확인", "F-011~F-013", "F-011"),
+        @("5. 제안·접수", "입찰참가 및 제안서 제출·접수 서류를 관리", "F-017~F-033", "F-017"),
+        @("6. 평가", "평가위원회 운영 및 정량·정성 평가를 수행", "F-014~F-016, F-034~F-040", "F-014"),
+        @("7. 낙찰", "낙찰자 결정 및 통보", "F-041~F-042", "F-041"),
+        @("8. 계약·납품", "계약 체결 및 납품 조건을 확인", "F-043", "F-043"),
+        @("9. 구매안내·사후평가", "가정통신문, 수요·만족도 조사 및 결과 정리", "F-044~F-052", "F-044")
+    )
+    $flowRow = 5
+    foreach ($flow in $flowRows) {
+        for ($i = 0; $i -lt $flow.Count; $i++) { $ws.Cells.Item($flowRow, $i + 1).Value2 = [string]$flow[$i] }
+        $flowRow++
+    }
+    $ws.Range("A4:D13").Borders.LineStyle = 1
+    $ws.Range("A5:A13,D5:D13").HorizontalAlignment = -4108
+    $ws.Columns.Item("A").ColumnWidth = 22
+    $ws.Columns.Item("B").ColumnWidth = 52
+    $ws.Columns.Item("C").ColumnWidth = 30
+    $ws.Columns.Item("D").ColumnWidth = 14
+    $ws.Range("A5:D13").VerticalAlignment = -4160
+    $ws.Range("B5:C13").WrapText = $true
+    L "절차안내 시트 작성 완료 (9단계 및 관련 Form ID 이동 UI)"
 
     # ---- 저장 ----
     $wsFirst.Activate()

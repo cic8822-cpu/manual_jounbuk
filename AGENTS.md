@@ -12,7 +12,7 @@
 ## 현재 구현 상태
 
 - 활성 단계는 `P3-01`이며, `P2-01`은 Form ID별 독립 HWPX 템플릿을 생성했으나 Kordoc `fill -j` 치환이 실패해 차단 상태임. HWPX 실제 치환은 독립 사본의 치환·재열기·한컴/PDF 검증이 모두 통과할 때만 수행함.
-- 클린룸 Excel v1 생성본은 [artifacts/excel/교복구매_길라잡이_Excel_v1.xlsm](artifacts/excel/교복구매_길라잡이_Excel_v1.xlsm)임. `F-007`, `F-024`만 대표 구현·검증되었고, 나머지 Form ID와 기준 XLSM의 모든 UI는 미구현임. `X-06`이 PASS가 되기 전 P3-01 완료로 보고하지 않음.
+- 클린룸 Excel 배포본은 [artifacts/excel](artifacts/excel)에 `교복구매_길라잡이_YYYYMMDD_vN.xlsm` 형식으로 저장함. 안전 빌드가 통과할 때마다 같은 날짜의 `vN`을 증가시켜 기존 통과본을 보존함. `F-007`, `F-024`만 대표 구현·검증되었고, 나머지 Form ID와 기준 XLSM의 모든 UI는 미구현임. `X-06`이 PASS가 되기 전 P3-01 완료로 보고하지 않음.
 - P5는 아직 구현하지 않음. 웹 UX는 절차 탐색 허브→단계 상세→관련 Form ID→입력·검증·출력 흐름으로 설계하며, 근거·최종 검토 안내와 접근성 기준을 [prd.md](prd.md) 및 `_workspace/05_web/학교행정업무길라잡이_웹판_UX_벤치마크.md`에서 관리함.
 - 기준 기능, 남은 범위 및 검증 결과는 [test.md](test.md), [체크리스트.md](체크리스트.md), [P3-01_Excel_MVP_설계검증.md](P3-01_Excel_MVP_설계검증.md)를 기준으로 판단함.
 
@@ -26,9 +26,8 @@
 
 ## 실행 및 검증
 
-- Excel v1 구조 생성: `powershell -ExecutionPolicy Bypass -File scripts/run_build_excel_v1_structure_utf8.ps1`
-- VBA 주입: `powershell -ExecutionPolicy Bypass -File scripts/build_excel_v1_vba.ps1`
-- Excel v1 사본 검증: `powershell -ExecutionPolicy Bypass -File scripts/verify_excel_v1.ps1`
+- Excel 안전 빌드(구조 생성·VBA 주입·사본 검증·통과본 저장): `powershell -ExecutionPolicy Bypass -File scripts/run_build_excel_v1_structure_utf8.ps1`. 통과본 파일명은 `교복구매_길라잡이_YYYYMMDD_vN.xlsm`임.
+- `build_excel_v1_structure.ps1`, `build_excel_v1_vba.ps1`, `verify_excel_v1.ps1`은 임시 `artifacts/excel/build.xlsm`을 대상으로 하는 보조 단계이며, 배포 후보를 직접 갱신하지 않음.
 - 활성 Phase 품질 게이트: `powershell -ExecutionPolicy Bypass -File .claude/hooks/verify-phase.ps1`
 - Markdown 공백 검사: `git diff --check`
 

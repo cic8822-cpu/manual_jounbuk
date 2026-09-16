@@ -1,7 +1,8 @@
 ﻿# P3-01 클린룸 재구현 — VBA 빌더(2/2): 기초자료 신규/저장/수정/불러오기, 서식선택 출력(PDF) 매크로 추가
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$targetPath = Join-Path $root 'artifacts\excel\교복구매_길라잡이_Excel_v1.xlsm'
+$defaultTargetPath = Join-Path $root 'artifacts\excel\build.xlsm'
+$targetPath = if ([string]::IsNullOrWhiteSpace($env:UNIFORM_EXCEL_BUILD_PATH)) { $defaultTargetPath } else { $env:UNIFORM_EXCEL_BUILD_PATH }
 $logPath = Join-Path $root '_workspace\03_excel\build_vba_log.txt'
 
 $excel = New-Object -ComObject Excel.Application
@@ -11,6 +12,7 @@ $log = New-Object System.Text.StringBuilder
 function L($s) { [void]$log.AppendLine($s) }
 
 $wb = $null
+$saveSucceeded = $false
 try {
     $wb = $excel.Workbooks.Open($targetPath, [Type]::Missing, $false)  # ReadOnly=False (편집)
 
@@ -46,7 +48,7 @@ try {
 
     # ---- VBA 모듈 추가 (재실행 대비: 동일 이름 기존 모듈 제거 후 추가) ----
     $vbproj = $wb.VBProject
-    foreach ($nm in @("Module_기초자료","Module_출력")) {
+    foreach ($nm in @("Module_기초자료","Module_출력","Module_검색_절차")) {
         try {
             $existing = $vbproj.VBComponents.Item($nm)
             $vbproj.VBComponents.Remove($existing)
@@ -152,12 +154,17 @@ End Sub
 
 Private Function 품목행검증(ByVal wsIn As Worksheet, ByVal showMessage As Boolean) As Boolean
     Dim sourceRow As Long
+    Dim hasName As Boolean, hasQuantity As Boolean, hasPrice As Boolean
     품목행검증 = True
     For sourceRow = 29 To 38
-        If Trim(wsIn.Cells(sourceRow, 2).Value & "") <> "" Then
-            If Not IsNumeric(wsIn.Cells(sourceRow, 3).Value) Or Not IsNumeric(wsIn.Cells(sourceRow, 4).Value) Or _
+        hasName = Trim(wsIn.Cells(sourceRow, 2).Value & "") <> ""
+        hasQuantity = Trim(wsIn.Cells(sourceRow, 3).Value & "") <> ""
+        hasPrice = Trim(wsIn.Cells(sourceRow, 4).Value & "") <> ""
+        If hasName Or hasQuantity Or hasPrice Then
+            If Not hasName Or Not hasQuantity Or Not hasPrice Or _
+                Not IsNumeric(wsIn.Cells(sourceRow, 3).Value) Or Not IsNumeric(wsIn.Cells(sourceRow, 4).Value) Or _
                 CDbl(wsIn.Cells(sourceRow, 3).Value) <= 0 Or CDbl(wsIn.Cells(sourceRow, 4).Value) <= 0 Then
-                If showMessage Then MsgBox "품목 " & (sourceRow - 28) & "행은 수량과 단가를 0보다 큰 숫자로 입력하세요.", vbExclamation
+                If showMessage Then MsgBox "품목 " & (sourceRow - 28) & "행은 품목명·수량·단가를 모두 입력하고, 수량과 단가는 0보다 큰 숫자로 입력하세요.", vbExclamation
                 품목행검증 = False
                 Exit Function
             End If
@@ -322,18 +329,18 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
     ReDim tmp(1 To lastRow)
     Dim cnt As Long
     cnt = 0
-    Dim skippedNotReady As Long, skippedDeferred As Long, skippedTooManyItems As Long
+    Dim skippedNotReady As Long, skippedDeferred As Long, skippedInvalidF024 As Long
     skippedNotReady = 0
     skippedDeferred = 0
-    skippedTooManyItems = 0
+    skippedInvalidF024 = 0
 
     Dim r As Long
     For r = 5 To lastRow
         If wsSel.Cells(r, 1).Value = True Then
             Dim status As String
             status = wsSel.Cells(r, 5).Value
-            If wsSel.Cells(r, 2).Value = "F-024" And Application.WorksheetFunction.CountA(Sheets("기초자료입력").Range("B35:B38")) > 0 Then
-                skippedTooManyItems = skippedTooManyItems + 1
+            If wsSel.Cells(r, 2).Value = "F-024" And Not 검증_F024출력가능() Then
+                skippedInvalidF024 = skippedInvalidF024 + 1
             ElseIf status = "Y" Then
                 cnt = cnt + 1
                 tmp(cnt) = wsSel.Cells(r, 6).Value
@@ -347,14 +354,14 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
 
     If cnt = 0 Then
         MsgBox "구현된 서식이 선택되지 않았습니다." & vbCrLf & _
-               "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-024 6품목 초과: " & skippedTooManyItems & "건", vbExclamation
+             "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-024 입력 오류·빈 품목·6품목 초과: " & skippedInvalidF024 & "건", vbExclamation
         선택된시트목록 = 0
         Exit Function
     End If
 
-    If skippedNotReady > 0 Or skippedDeferred > 0 Or skippedTooManyItems > 0 Then
+    If skippedNotReady > 0 Or skippedDeferred > 0 Or skippedInvalidF024 > 0 Then
         MsgBox "일부 선택 서식은 아직 준비되지 않아 제외합니다." & vbCrLf & _
-               "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-024 6품목 초과: " & skippedTooManyItems & "건", vbInformation
+               "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-024 입력 오류·빈 품목·6품목 초과: " & skippedInvalidF024 & "건", vbInformation
     End If
 
     ReDim outNames(1 To cnt)
@@ -363,6 +370,12 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
         outNames(i) = tmp(i)
     Next i
     선택된시트목록 = cnt
+End Function
+
+Public Function 검증_F024출력가능() As Boolean
+    Dim itemCount As Long
+    itemCount = Application.WorksheetFunction.CountA(Sheets("기초자료입력").Range("B29:B38"))
+    검증_F024출력가능 = 검증_품목행검증() And itemCount >= 1 And itemCount <= 6
 End Function
 
 Sub 선택서식_인쇄미리보기()
@@ -404,6 +417,119 @@ End Sub
     $codeOutput = $codeOutput -replace "`r`n", "`r" -replace "`n", "`r"
     $modOutput.CodeModule.AddFromString($codeOutput)
     L "Module_출력 추가 완료 (줄 수: $($modOutput.CodeModule.CountOfLines))"
+
+    $modNavigation = $vbproj.VBComponents.Add(1)
+    $modNavigation.Name = "Module_검색_절차"
+    $codeNavigation = @'
+Option Explicit
+
+Sub 학교검색_실행()
+    Call 학교검색_실행_내부(True)
+End Sub
+
+Public Sub 검증_학교검색_실행()
+    Call 학교검색_실행_내부(False)
+End Sub
+
+Private Sub 학교검색_실행_내부(ByVal showMessage As Boolean)
+    Dim wsSearch As Worksheet, wsSchool As Worksheet
+    Dim schoolName As String, regionName As String, schoolLevel As String
+    Dim lastRow As Long, sourceRow As Long, resultRow As Long, count As Long
+
+    Set wsSearch = Sheets("학교검색")
+    Set wsSchool = Sheets("학교정보")
+    schoolName = Trim(wsSearch.Range("B3").Value & "")
+    regionName = Trim(wsSearch.Range("D3").Value & "")
+    schoolLevel = Trim(wsSearch.Range("F3").Value & "")
+    wsSearch.Range("A7:F126").ClearContents
+
+    lastRow = wsSchool.Cells(wsSchool.Rows.Count, 5).End(xlUp).Row
+    resultRow = 7
+    count = 0
+    For sourceRow = 2 To lastRow
+        If (schoolName = "" Or InStr(1, wsSchool.Cells(sourceRow, 5).Value & "", schoolName, vbTextCompare) > 0) And _
+           (regionName = "" Or InStr(1, wsSchool.Cells(sourceRow, 2).Value & "", regionName, vbTextCompare) > 0) And _
+           (schoolLevel = "" Or InStr(1, wsSchool.Cells(sourceRow, 3).Value & "", schoolLevel, vbTextCompare) > 0) Then
+            wsSearch.Cells(resultRow, 1).Value = wsSchool.Cells(sourceRow, 1).Value
+            wsSearch.Cells(resultRow, 2).Value = wsSchool.Cells(sourceRow, 2).Value
+            wsSearch.Cells(resultRow, 3).Value = wsSchool.Cells(sourceRow, 3).Value
+            wsSearch.Cells(resultRow, 4).Value = wsSchool.Cells(sourceRow, 5).Value
+            wsSearch.Cells(resultRow, 5).Value = wsSchool.Cells(sourceRow, 6).Value
+            wsSearch.Cells(resultRow, 6).Value = wsSchool.Cells(sourceRow, 7).Value
+            resultRow = resultRow + 1
+            count = count + 1
+        End If
+    Next sourceRow
+    If showMessage Then MsgBox count & "건을 찾았습니다. 결과 행을 선택한 뒤 [선택 학교를 기초자료에 반영]을 누르세요.", vbInformation
+End Sub
+
+Sub 선택학교_기초자료반영()
+    Call 선택학교_기초자료반영_내부(True)
+End Sub
+
+Public Sub 검증_선택학교_기초자료반영()
+    Call 선택학교_기초자료반영_내부(False)
+End Sub
+
+Private Sub 선택학교_기초자료반영_내부(ByVal showMessage As Boolean)
+    Dim wsSearch As Worksheet
+    Dim resultRow As Long, selectedSchool As String
+    Set wsSearch = Sheets("학교검색")
+    If ActiveSheet.Name <> wsSearch.Name Then
+        If showMessage Then MsgBox "학교검색 시트의 검색 결과 행을 선택하세요.", vbExclamation
+        Exit Sub
+    End If
+    resultRow = ActiveCell.Row
+    If resultRow < 7 Or resultRow > 126 Then
+        If showMessage Then MsgBox "검색 결과의 학교 행을 선택하세요.", vbExclamation
+        Exit Sub
+    End If
+    selectedSchool = Trim(wsSearch.Cells(resultRow, 4).Value & "")
+    If selectedSchool = "" Then
+        If showMessage Then MsgBox "선택한 행에 학교명이 없습니다. 먼저 검색하세요.", vbExclamation
+        Exit Sub
+    End If
+    Sheets("기초자료입력").Range("C4").Value = selectedSchool
+    If showMessage Then MsgBox "학교명(C-01)에 '" & selectedSchool & "'을(를) 반영했습니다.", vbInformation
+End Sub
+
+Sub 관련FormID로이동()
+    Call 관련FormID로이동_내부(True)
+End Sub
+
+Public Sub 검증_관련FormID로이동()
+    Call 관련FormID로이동_내부(False)
+End Sub
+
+Private Sub 관련FormID로이동_내부(ByVal showMessage As Boolean)
+    Dim wsFlow As Worksheet, wsSelect As Worksheet
+    Dim flowRow As Long, formId As String, lastRow As Long, r As Long
+    Set wsFlow = Sheets("절차안내")
+    Set wsSelect = Sheets("서식선택_출력")
+    If ActiveSheet.Name <> wsFlow.Name Then
+        If showMessage Then MsgBox "절차안내 시트의 단계 행을 선택하세요.", vbExclamation
+        Exit Sub
+    End If
+    flowRow = ActiveCell.Row
+    If flowRow < 5 Or flowRow > 13 Then
+        If showMessage Then MsgBox "1~9단계의 행을 선택하세요.", vbExclamation
+        Exit Sub
+    End If
+    formId = Trim(wsFlow.Cells(flowRow, 4).Value & "")
+    lastRow = wsSelect.Cells(wsSelect.Rows.Count, 2).End(xlUp).Row
+    For r = 5 To lastRow
+        If wsSelect.Cells(r, 2).Value = formId Then
+            wsSelect.Activate
+            wsSelect.Cells(r, 2).Select
+            Exit Sub
+        End If
+    Next r
+    If showMessage Then MsgBox "이동할 Form ID를 찾지 못했습니다: " & formId, vbExclamation
+End Sub
+'@
+    $codeNavigation = $codeNavigation -replace "`r`n", "`r" -replace "`n", "`r"
+    $modNavigation.CodeModule.AddFromString($codeNavigation)
+    L "Module_검색_절차 추가 완료 (줄 수: $($modNavigation.CodeModule.CountOfLines))"
 
     # ---- ThisWorkbook: Workbook_Open (서식선택 체크박스 초기화) ----
     # 참고: 한글 Office에서는 ThisWorkbook 문서모듈의 기본 컴포넌트 이름이 "ThisWorkbook"이 아니라
@@ -480,12 +606,35 @@ End Sub
     $btn2.Name = "btnPDF저장"
     L "서식선택_출력 버튼 2개 배치 완료"
 
+    $wsSearch = $wb.Worksheets.Item("학교검색")
+    foreach ($nm in @("btn학교검색", "btn선택학교반영")) {
+        try { $wsSearch.Buttons($nm).Delete() } catch { L "기존 버튼 $nm 없음" }
+    }
+    $btnSearch = $wsSearch.Buttons().Add(520, 35, 80, 24)
+    $btnSearch.Caption = "검색"
+    $btnSearch.OnAction = "학교검색_실행"
+    $btnSearch.Name = "btn학교검색"
+    $btnApplySchool = $wsSearch.Buttons().Add(610, 35, 190, 24)
+    $btnApplySchool.Caption = "선택 학교를 기초자료에 반영"
+    $btnApplySchool.OnAction = "선택학교_기초자료반영"
+    $btnApplySchool.Name = "btn선택학교반영"
+    L "학교검색 버튼 2개 배치 완료"
+
+    $wsFlow = $wb.Worksheets.Item("절차안내")
+    try { $wsFlow.Buttons("btn관련FormID이동").Delete() } catch { L "기존 버튼 btn관련FormID이동 없음" }
+    $btnFlow = $wsFlow.Buttons().Add(650, 35, 150, 24)
+    $btnFlow.Caption = "관련 Form ID로 이동"
+    $btnFlow.OnAction = "관련FormID로이동"
+    $btnFlow.Name = "btn관련FormID이동"
+    L "절차안내 Form ID 이동 버튼 배치 완료"
+
     # ---- 저장 ----
     $wb.Save()
+    $saveSucceeded = $true
     L "VBA 매크로 및 버튼 추가 후 저장 완료: $targetPath"
 
 } finally {
-    if ($wb) { $wb.Close($true) }
+    if ($wb) { $wb.Close($saveSucceeded) }
     $excel.Quit()
     if ($wb) { [System.Runtime.Interopservices.Marshal]::ReleaseComObject($wb) | Out-Null }
     [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null

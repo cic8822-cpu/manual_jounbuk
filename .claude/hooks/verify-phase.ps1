@@ -363,8 +363,26 @@ if ($null -eq $scriptAnalyzer) {
 if ($null -ne $gate -and $gate.activePhase -eq 'P3-01') {
     $excelVerifier = Join-Path $root 'scripts\\verify_excel_v1.ps1'
     if (Test-Path -LiteralPath $excelVerifier -PathType Leaf) {
-        $excelVerifierOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $excelVerifier 2>&1
-        if ($LASTEXITCODE -ne 0) {
+        $previousBuildPath = $env:UNIFORM_EXCEL_BUILD_PATH
+        $excelDirectory = Join-Path $root 'artifacts\excel'
+        $excelBaseName = -join [char[]](0xAD50, 0xBCF5, 0xAD6C, 0xB9E4, 0x005F, 0xAE38, 0xB77C, 0xC7A1, 0xC774)
+        $excelNamePattern = '^{0}_\d{{8}}_v\d+\.xlsm$' -f [regex]::Escape($excelBaseName)
+        $latestExcelFile = Get-ChildItem -LiteralPath $excelDirectory -File |
+            Where-Object { $_.Name -match $excelNamePattern } |
+            Sort-Object LastWriteTimeUtc -Descending |
+            Select-Object -First 1
+        if ($null -eq $latestExcelFile) {
+            $failures.Add('P3 이름_날짜_버전 형식의 Excel 배포본을 찾지 못함')
+        } else {
+            $env:UNIFORM_EXCEL_BUILD_PATH = $latestExcelFile.FullName
+            $excelVerifierOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $excelVerifier 2>&1
+        }
+        if ($null -eq $previousBuildPath) {
+            Remove-Item Env:UNIFORM_EXCEL_BUILD_PATH -ErrorAction SilentlyContinue
+        } else {
+            $env:UNIFORM_EXCEL_BUILD_PATH = $previousBuildPath
+        }
+        if ($null -ne $latestExcelFile -and $LASTEXITCODE -ne 0) {
             $failures.Add("P3 실제 XLSM 검증 실패: $($excelVerifierOutput -join ' ')")
         }
         $excelVerifierLog = Join-Path $root '_workspace\\03_excel\\verify_v1_log.txt'
