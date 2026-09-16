@@ -41,17 +41,19 @@ try {
     $ws.Range("A1").Font.Size = 14
     $ws.Range("A1").Font.Bold = $true
     $ws.Range("A3").Value2 = "1. 이 파일을 열면 Excel 상단에 '보안 경고 - 매크로 사용 안 함' 알림이 뜹니다. [콘텐츠 사용]을 눌러 매크로를 허용해야 입력·출력 기능이 동작합니다."
-    $ws.Range("A4").Value2 = "2. '기초자료입력' 시트에 공통·사업·문서 정보와 품목을 입력한 뒤 [저장하기] 버튼을 누르면 'DB' 시트에 기록됩니다."
+    $ws.Range("A4").Value2 = "2. '기초자료입력' 시트에 공통·사업·문서 정보와 품목·업체·위원·평가점수 반복행을 입력한 뒤 [저장하기] 버튼을 누르면 정규화 DB 시트에 기록됩니다."
     $ws.Range("A5").Value2 = "3. '서식선택_출력' 시트에서 원하는 서식에 체크(TRUE)한 뒤 [선택 서식 인쇄 미리보기]/[선택 서식 PDF 저장] 버튼을 누릅니다."
     $ws.Range("A6").Value2 = "4. '학교검색' 시트에서 학교명·지역·급별 조건을 입력하고 [검색] 후 결과 행을 선택해 [선택 학교를 기초자료에 반영]을 누르면 학교명이 기초자료입력!C4에 반영됩니다."
     $ws.Range("A7").Value2 = "5. '절차안내' 시트는 교복구매 9단계와 단계별 관련 Form ID를 제공합니다. 단계 행을 선택하고 [관련 Form ID로 이동]을 누르면 서식선택_출력의 해당 Form ID로 이동합니다."
     $ws.Range("A8").Value2 = "6. 이 v1 버전은 F-007, F-024 두 서식만 완전히 구현되어 있습니다. 나머지 서식은 '구현상태' 열에 표시된 대로 순차 추가 예정입니다."
     $ws.Range("A9").Value2 = "7. F-013(교복 디자인 및 규격서)은 표·이미지가 많은 다쪽(11쪽) 문서로, Excel보다 HWPX 경로가 적합하여 이번 버전에서는 보류하고 document-automation-engineer 협업 대상으로 남겼습니다."
     $ws.Range("A10").Value2 = "8. 업체 후보는 '기초자료입력' 시트의 업체 반복행에 상호명만 입력합니다. 대표자·연락처·전화번호·사업자번호는 입력·저장하지 않으며, 중복 상호는 실제 동일 업체인지 확인합니다."
-    $ws.Range("A11").Value2 = "원본 보호: 이 파일은 20230808_용역계약갈라잡이(디깅모멘텀)_이행원.xlsm 을 참고해 클린룸 방식으로 새로 작성한 사본이며, 원본 파일을 직접 열거나 수정하지 않습니다."
-    $ws.Range("A12").Value2 = "개인정보 경계: 이 파일은 학교·계약 단위 업무 정보만 다루며, 학생·학부모 개인정보 및 서명·직인 자동처리는 포함하지 않습니다."
+    $ws.Range("A11").Value2 = "9. 위원 반복행에는 역할·직위와 ○ 또는 *를 포함한 마스킹 식별표시만 입력합니다. 실제 성명·연락처·서명은 입력·저장하지 않습니다. 평가점수는 항목별 배점을 초과할 수 없고 총점은 자동 계산됩니다."
+    $ws.Range("A12").Value2 = "10. 내부 DB 시트의 숨김·무암호 보호는 우발적 편집 방지용이며 보안 경계가 아닙니다. 매크로 허용 상태에서는 저장 직전에 DB·반복행 전체를 재검증하고, 개인정보성 표기·불완전 위원·평가행 등 허용되지 않은 값이 있으면 저장을 취소합니다."
+    $ws.Range("A13").Value2 = "원본 보호: 이 파일은 20230808_용역계약갈라잡이(디깅모멘텀)_이행원.xlsm 을 참고해 클린룸 방식으로 새로 작성한 사본이며, 원본 파일을 직접 열거나 수정하지 않습니다."
+    $ws.Range("A14").Value2 = "개인정보 경계: 이 파일은 학교·계약 단위 업무 정보만 다루며, 학생·학부모 개인정보 및 서명·직인 자동처리는 포함하지 않습니다."
     $ws.Columns.Item("A").ColumnWidth = 110
-    $ws.Range("A3:A12").WrapText = $false
+    $ws.Range("A3:A14").WrapText = $false
 
     L "사용설명서 시트 작성 완료"
 
@@ -59,7 +61,7 @@ try {
     $wsBase = $wbNew.Worksheets.Add()
     $wsBase.Name = "기초자료입력"
     $ws = $wsBase
-    $ws.Range("A1").Value2 = "기초자료 입력 (공통 C-01~C-06 / 사업 B-01~B-07 / 문서별 D-01~D-05 / 품목 R-04~R-06)"
+    $ws.Range("A1").Value2 = "기초자료 입력 (공통 C-01~C-06 / 사업 B-01~B-07 / 문서별 D-01~D-05 / 반복 R-01~R-07)"
     $ws.Range("A1:F1").Merge() | Out-Null
     $ws.Range("A1").Font.Size = 13
     $ws.Range("A1").Font.Bold = $true
@@ -153,6 +155,37 @@ try {
         $ws.Range("B$r").Interior.Color = 16777164
     }
 
+    # R-01/R-02: 위원 역할과 마스킹 식별표시만 저장한다. 실제 성명·연락처·서명은 입력·저장하지 않는다.
+    $ws.Range("B56").Value2 = "6. 위원 반복행 (R-01 역할·직위 / R-02 마스킹 식별표시) — 실제 성명·연락처·서명 입력 금지"
+    $ws.Range("B56").Font.Bold = $true
+    $ws.Range("B57").Value2 = "역할·직위"
+    $ws.Range("C57").Value2 = "마스킹 식별표시 (위원 ○○/위원 **만 허용)"
+    $ws.Range("B57:C57").Font.Bold = $true
+    for ($i = 0; $i -lt 10; $i++) {
+        $r = 58 + $i
+        $ws.Range("B$r:C$r").Interior.Color = 16777164
+    }
+
+    # R-07/K-03: 평가항목별 배점과 점수는 분리 저장하고 총점은 수식으로만 계산한다.
+    $ws.Range("B70").Value2 = "7. 평가점수 반복행 (R-07 점수 / K-03 평가 총점 자동계산) — 업체·위원 식별정보는 입력하지 않음"
+    $ws.Range("B70").Font.Bold = $true
+    $ws.Range("B71").Value2 = "평가항목"
+    $ws.Range("C71").Value2 = "배점"
+    $ws.Range("D71").Value2 = "점수"
+    $ws.Range("E71").Value2 = "점수 상태"
+    $ws.Range("B71:E71").Font.Bold = $true
+    for ($i = 0; $i -lt 10; $i++) {
+        $r = 72 + $i
+        $ws.Range("B$r:D$r").Interior.Color = 16777164
+        $ws.Range("C$r:D$r").NumberFormat = "0.00"
+        $ws.Range("E$r").Formula = "=IF(AND(B$r<>`"`",C$r<>`"`",D$r<>`"`"),IF(AND(ISNUMBER(C$r),ISNUMBER(D$r),C$r>=0,D$r>=0,D$r<=C$r),`"정상`",`"점수/배점 확인`"),`"`")"
+    }
+    $ws.Range("B82").Value2 = "평가 총점 (K-03)"
+    $ws.Range("B82").Font.Bold = $true
+    $ws.Range("D82").Formula = "=SUM(D72:D81)"
+    $ws.Range("D82").NumberFormat = "0.00"
+    $ws.Range("D82").Font.Bold = $true
+
     $ws.Columns.Item("A").ColumnWidth = 6
     $ws.Columns.Item("B").ColumnWidth = 20
     $ws.Columns.Item("C").ColumnWidth = 20
@@ -195,6 +228,28 @@ try {
     }
     $wsVendors.Rows.Item(1).AutoFilter() | Out-Null
     L "DB_업체 시트 작성 완료 (업체명 반복행 저장용, 개인정보·연락처 제외)"
+
+    # ---- 5b. DB_위원 (R-01/R-02 정규화 저장, 실제 성명·연락처·서명 제외) ----
+    $wsCommittee = $wbNew.Worksheets.Add()
+    $wsCommittee.Name = "DB_위원"
+    $committeeHeaders = @("레코드순번", "행번호", "역할직위", "마스킹식별표시")
+    for ($i = 0; $i -lt $committeeHeaders.Count; $i++) {
+        $wsCommittee.Cells.Item(1, $i + 1).Value2 = $committeeHeaders[$i]
+        $wsCommittee.Cells.Item(1, $i + 1).Font.Bold = $true
+    }
+    $wsCommittee.Rows.Item(1).AutoFilter() | Out-Null
+    L "DB_위원 시트 작성 완료 (역할·마스킹 식별표시만 저장, 개인정보 제외)"
+
+    # ---- 5c. DB_평가 (R-07/K-03 정규화 저장) ----
+    $wsScore = $wbNew.Worksheets.Add()
+    $wsScore.Name = "DB_평가"
+    $scoreHeaders = @("레코드순번", "행번호", "평가항목", "배점", "점수")
+    for ($i = 0; $i -lt $scoreHeaders.Count; $i++) {
+        $wsScore.Cells.Item(1, $i + 1).Value2 = $scoreHeaders[$i]
+        $wsScore.Cells.Item(1, $i + 1).Font.Bold = $true
+    }
+    $wsScore.Rows.Item(1).AutoFilter() | Out-Null
+    L "DB_평가 시트 작성 완료 (평가항목·배점·점수 반복행 저장용)"
 
     # ---- 6. 서식선택_출력 ----
     $wsSel = $wbNew.Worksheets.Add()
@@ -640,6 +695,17 @@ try {
     $ws.Range("A10").WrapText = $true
     $ws.Rows.Item(10).RowHeight = 36
     L "계약방법안내 시트 작성 완료 (2단계 입찰 예시 확인 및 수동 검토 경계)"
+
+    # ---- 내부 DB 보호: 사용자 직접 편집을 막고, 매크로만 UserInterfaceOnly로 기록하게 한다. ----
+    # 비밀번호를 지정하지 않으며, DB는 불러오기 순번 확인용으로 일반 숨김, 반복 DB는 VeryHidden 처리한다.
+    $wsDB.Visible = 0  # xlSheetHidden
+    foreach ($internalSheet in @($wsDB, $wsItems, $wsVendors, $wsCommittee, $wsScore)) {
+        $internalSheet.Protect("", $true, $true, $true, $true)
+    }
+    foreach ($internalSheet in @($wsItems, $wsVendors, $wsCommittee, $wsScore)) {
+        $internalSheet.Visible = 2  # xlSheetVeryHidden
+    }
+    L "DB 및 반복 DB 시트 보호 완료 (DB=숨김, 반복 DB=VeryHidden, UserInterfaceOnly 매크로 기록 허용, 비밀번호 없음)"
 
     # ---- 저장 ----
     $wsFirst.Activate()

@@ -69,9 +69,16 @@ try {
 
     # 4. 시트 목록
     L "시트 목록: $((@($wb.Worksheets) | ForEach-Object { $_.Name }) -join ', ')"
-    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', 'DB_업체', '서식선택_출력', 'F-007_구매요청기안문', 'F-024_단가비율표', '학교정보', '학교검색', '절차안내', '계약방법안내')
+    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', 'DB_업체', 'DB_위원', 'DB_평가', '서식선택_출력', 'F-007_구매요청기안문', 'F-024_단가비율표', '학교정보', '학교검색', '절차안내', '계약방법안내')
     $sheetNames = @($wb.Worksheets | ForEach-Object { $_.Name })
-    Assert-Check ($sheetNames.Count -eq 12 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) '필수 12개 시트가 모두 존재함'
+    Assert-Check ($sheetNames.Count -eq 14 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) '필수 14개 시트가 모두 존재함'
+    $wsProtectedDB = $wb.Worksheets.Item('DB')
+    $wsProtectedItems = $wb.Worksheets.Item('DB_품목')
+    $wsProtectedVendors = $wb.Worksheets.Item('DB_업체')
+    $wsProtectedCommittee = $wb.Worksheets.Item('DB_위원')
+    $wsProtectedScore = $wb.Worksheets.Item('DB_평가')
+    Assert-Check ($wsProtectedDB.ProtectContents -and $wsProtectedItems.ProtectContents -and $wsProtectedVendors.ProtectContents -and $wsProtectedCommittee.ProtectContents -and $wsProtectedScore.ProtectContents -and $wsProtectedDB.Visible -eq 0 -and $wsProtectedItems.Visible -eq 2 -and $wsProtectedVendors.Visible -eq 2 -and $wsProtectedCommittee.Visible -eq 2 -and $wsProtectedScore.Visible -eq 2) 'DB는 숨김·보호되고 반복 DB는 VeryHidden·보호됨'
+    L 'DB 숨김·무암호 보호는 우발적 편집 방지 상태로만 확인함. 직접 DB 편집의 영구 저장 차단은 아래 Workbook_BeforeSave 저장 경계 시나리오에서 별도로 검증함.'
 
     # 4a. 학교검색 및 절차안내 정적 구조
     $wsSchool = $wb.Worksheets.Item('학교정보')
@@ -109,6 +116,16 @@ try {
     $wsIn.Range("D30").Value2 = 40000
     $wsIn.Range("B44").Value2 = "검증업체가"
     $wsIn.Range("B45").Value2 = "검증업체나"
+    $wsIn.Range("B58").Value2 = "교원위원"
+    $wsIn.Range("C58").Value2 = "위원 ○○"
+    $wsIn.Range("B59").Value2 = "학부모위원"
+    $wsIn.Range("C59").Value2 = "위원 **"
+    $wsIn.Range("B72").Value2 = "제품 품질"
+    $wsIn.Range("C72").Value2 = 40
+    $wsIn.Range("D72").Value2 = 38.5
+    $wsIn.Range("B73").Value2 = "사후 관리"
+    $wsIn.Range("C73").Value2 = 60
+    $wsIn.Range("D73").Value2 = 60
     $excel.CalculateFullRebuild()
 
     $wsIn.Range('C14').Value2 = '수동입력값'
@@ -141,9 +158,90 @@ try {
     $wsVendors = $wb.Worksheets.Item('DB_업체')
     L "DB_업체 기록 확인: $($wsVendors.Cells.Item(2, 1).Value2)/$($wsVendors.Cells.Item(2, 3).Value2), $($wsVendors.Cells.Item(3, 1).Value2)/$($wsVendors.Cells.Item(3, 3).Value2)"
     Assert-Check ($wsVendors.Cells.Item(2, 1).Value2 -eq 1 -and $wsVendors.Cells.Item(2, 2).Value2 -eq 1 -and $wsVendors.Cells.Item(2, 3).Value2 -eq '검증업체가' -and $wsVendors.Cells.Item(3, 1).Value2 -eq 1 -and $wsVendors.Cells.Item(3, 2).Value2 -eq 2 -and $wsVendors.Cells.Item(3, 3).Value2 -eq '검증업체나') '저장하기()가 복수 업체 반복행을 DB_업체에 기록함'
+    $wsCommittee = $wb.Worksheets.Item('DB_위원')
+    Assert-Check ($wsCommittee.Cells.Item(2, 1).Value2 -eq 1 -and $wsCommittee.Cells.Item(2, 2).Value2 -eq 1 -and $wsCommittee.Cells.Item(2, 3).Value2 -eq '교원위원' -and $wsCommittee.Cells.Item(2, 4).Value2 -eq '위원 ○○' -and $wsCommittee.Cells.Item(3, 3).Value2 -eq '학부모위원' -and $wsCommittee.Cells.Item(3, 4).Value2 -eq '위원 **') '저장하기()가 복수 위원 역할·마스킹 식별표시를 DB_위원에 정규화 저장함'
+    $wsScore = $wb.Worksheets.Item('DB_평가')
+    Assert-Check ($wsScore.Cells.Item(2, 1).Value2 -eq 1 -and $wsScore.Cells.Item(2, 2).Value2 -eq 1 -and $wsScore.Cells.Item(2, 3).Value2 -eq '제품 품질' -and $wsScore.Cells.Item(2, 4).Value2 -eq 40 -and $wsScore.Cells.Item(2, 5).Value2 -eq 38.5 -and $wsScore.Cells.Item(3, 5).Value2 -eq 60 -and $wsIn.Range('D82').Value2 -eq 98.5) '저장하기()가 복수 평가점수와 K-03 총점을 DB_평가에 정규화 저장함'
+    Assert-Check ([bool]$excel.Run('검증_위원행검증') -and [bool]$excel.Run('검증_평가행검증')) '위원 마스킹·평가점수 정상값과 경계값(점수=배점)을 허용함'
+
+    # 6.0 저장 경계: 무암호 보호를 해제한 직접 DB 편집도 Workbook_BeforeSave에서 재검증해 영구 저장을 취소한다.
+    foreach ($internalSheet in @($wsDB, $wsItems, $wsVendors, $wsCommittee, $wsScore)) { $internalSheet.Unprotect("") }
+    Assert-Check ([bool]$excel.Run('검증_저장경계')) '정상 DB·반복행은 저장 경계 재검증을 통과함'
+    $wb.Save()
+    Assert-Check ($wb.Saved) '정상 DB·반복행은 Workbook_BeforeSave 경계를 거쳐 저장됨'
+
+    $wsCommittee.Cells.Item(2, 4).Value2 = '홍길동'
+    Assert-Check (-not [bool]$excel.Run('검증_저장경계')) 'DB_위원의 실명 R-02 직접 입력을 저장 경계가 거부함'
+    $wb.Saved = $false; $wb.Save()
+    Assert-Check (-not $wb.Saved) 'DB_위원 실명 R-02 직접 입력은 Workbook_BeforeSave에서 저장이 취소됨'
+    $wsCommittee.Cells.Item(2, 4).Value2 = '위원 ○○'
+
+    $wsCommittee.Cells.Item(2, 3).ClearContents()
+    Assert-Check (-not [bool]$excel.Run('검증_저장경계')) 'DB_위원 역할·식별표시 불완전 직접 입력을 저장 경계가 거부함'
+    $wb.Saved = $false; $wb.Save()
+    Assert-Check (-not $wb.Saved) 'DB_위원 역할 누락 직접 입력은 Workbook_BeforeSave에서 저장이 취소됨'
+    $wsCommittee.Cells.Item(2, 3).Value2 = '교원위원'
+
+    $wsScore.Cells.Item(2, 5).Value2 = 40.01
+    Assert-Check (-not [bool]$excel.Run('검증_저장경계')) 'DB_평가 배점 초과 점수 직접 입력을 저장 경계가 거부함'
+    $wb.Saved = $false; $wb.Save()
+    Assert-Check (-not $wb.Saved) 'DB_평가 배점 초과 직접 입력은 Workbook_BeforeSave에서 저장이 취소됨'
+    $wsScore.Cells.Item(2, 5).Value2 = 38.5
+
+    $wsVendors.Cells.Item(2, 3).Value2 = '010-1234-5678'
+    Assert-Check (-not [bool]$excel.Run('검증_저장경계')) 'DB_업체 연락처성 직접 입력을 저장 경계가 거부함'
+    $wb.Saved = $false; $wb.Save()
+    Assert-Check (-not $wb.Saved) 'DB_업체 연락처성 직접 입력은 Workbook_BeforeSave에서 저장이 취소됨'
+    $wsVendors.Cells.Item(2, 3).Value2 = '검증업체가'
+
+    $wsDB.Cells.Item(3, 1).Value2 = 2
+    Assert-Check (-not [bool]$excel.Run('검증_저장경계')) 'DB 불완전 주 레코드 직접 입력을 저장 경계가 거부함'
+    $wb.Saved = $false; $wb.Save()
+    Assert-Check (-not $wb.Saved) 'DB 불완전 주 레코드 직접 입력은 Workbook_BeforeSave에서 저장이 취소됨'
+    $wsDB.Range('A3:T3').ClearContents()
+    Assert-Check ([bool]$excel.Run('검증_저장경계')) '직접 입력 오류를 원복하면 저장 경계가 정상 데이터만 허용함'
+    $wb.Saved = $false; $wb.Save()
+    Assert-Check ($wb.Saved) '직접 입력 오류를 원복한 정상 데이터는 Workbook_BeforeSave를 거쳐 저장됨'
+
+    $wsIn.Range('B60').Value2 = '외부위원'
+    $wsIn.Range('C60').Value2 = '마스킹 없음'
+    Assert-Check (-not [bool]$excel.Run('검증_위원행검증')) '위원 식별표시에 마스킹 기호가 없으면 저장을 거부함'
+    $wsIn.Range('C60').ClearContents()
+    $wsIn.Range('B60').Value2 = '외부위원'
+    Assert-Check (-not [bool]$excel.Run('검증_위원행검증')) '위원 역할만 있는 불완전 반복행을 거부함'
+    $wsIn.Range('B60:C60').ClearContents()
+    $wsIn.Range('C58').Value2 = '010-1234-5678 ○'
+    Assert-Check (-not [bool]$excel.Run('검증_위원행검증')) '위원 식별표시에 연락처성 숫자열이 있으면 저장을 거부함'
+    $wsIn.Range('C58').Value2 = '홍길동 ○'
+    Assert-Check (-not [bool]$excel.Run('검증_위원행검증')) '실명 의심값과 마스킹 기호를 결합한 R-02 우회 입력을 거부함'
+    Invoke-ValidationMacro -macroName '검증_수정하기'
+    Assert-Check ($wsCommittee.Cells.Item(2, 4).Value2 -eq '위원 ○○') '실명 의심 R-02 우회 입력은 수정 저장을 차단함'
+    $wsIn.Range('C58').Value2 = '위원 ○○'
+    $wsIn.Range('D74').Value2 = 1
+    Assert-Check (-not [bool]$excel.Run('검증_평가행검증')) '평가항목·배점 없는 점수 고아 입력행을 거부함'
+    $wsIn.Range('B74:D74').ClearContents()
+    $wsIn.Range('B74').Value2 = '가격 경쟁력'
+    $wsIn.Range('C74').Value2 = 20
+    $wsIn.Range('D74').Value2 = 20.01
+    Assert-Check (-not [bool]$excel.Run('검증_평가행검증')) '배점을 초과한 평가점수를 거부함'
+    $wsIn.Range('B74:D74').ClearContents()
+    $wsIn.Range('B58:C67').ClearContents()
+    $wsIn.Range('B72:D81').ClearContents()
     $wsIn.Range('B44:B53').ClearContents()
     Invoke-ValidationMacro -macroName '검증_첫레코드불러오기'
     Assert-Check ($wsIn.Range('B44').Value2 -eq '검증업체가' -and $wsIn.Range('B45').Value2 -eq '검증업체나') '불러오기()가 업체 반복행을 원래 행에 복원함'
+    Assert-Check ($wsIn.Range('B58').Value2 -eq '교원위원' -and $wsIn.Range('C58').Value2 -eq '위원 ○○' -and $wsIn.Range('B59').Value2 -eq '학부모위원' -and $wsIn.Range('D82').Value2 -eq 98.5) '불러오기()가 위원·평가 반복행과 K-03 총점을 복원함'
+    $wsIn.Range('C59').Value2 = '위원 ○*'
+    $wsIn.Range('D73').Value2 = 59.5
+    $wsIn.Range('B60').Value2 = '교원위원'
+    $wsIn.Range('C60').Value2 = '위원 ○○'
+    Assert-Check ([bool]$excel.Run('검증_위원중복경고')) '수정 전 위원 역할 중복 경고를 감지함'
+    $wsIn.Range('B60:C60').ClearContents()
+    Invoke-ValidationMacro -macroName '검증_수정하기'
+    $wsIn.Range('B58:C67').ClearContents()
+    $wsIn.Range('B72:D81').ClearContents()
+    Invoke-ValidationMacro -macroName '검증_첫레코드불러오기'
+    Assert-Check ($wsIn.Range('C59').Value2 -eq '위원 ○*' -and $wsIn.Range('D73').Value2 -eq 59.5 -and $wsScore.Cells.Item(3, 5).Value2 -eq 59.5 -and $wsIn.Range('D82').Value2 -eq 98) '수정하기()가 위원·평가 반복행을 교체하고 총점을 재계산함'
     $wsIn.Range('B45').ClearContents()
     $wsIn.Range('B47').Value2 = '검증업체다'
     Invoke-ValidationMacro -macroName '검증_수정하기'
@@ -253,9 +351,14 @@ try {
     # 8. 매크로 실행 후 테스트값 원복(초기화) — 배포본에 테스트 데이터가 남지 않도록
     Invoke-ValidationMacro -macroName '검증_초기화'
     $wsDB2 = $wb.Worksheets.Item("DB")
+    foreach ($internalSheet in @($wsDB2, $wb.Worksheets.Item('DB_품목'), $wb.Worksheets.Item('DB_업체'), $wb.Worksheets.Item('DB_위원'), $wb.Worksheets.Item('DB_평가'))) {
+        $internalSheet.Unprotect("")
+    }
     $wsDB2.Range("A2:T2").ClearContents()
     $wb.Worksheets.Item('DB_품목').Range('A2:F100').ClearContents()
     $wb.Worksheets.Item('DB_업체').Range('A2:C100').ClearContents()
+    $wb.Worksheets.Item('DB_위원').Range('A2:D100').ClearContents()
+    $wb.Worksheets.Item('DB_평가').Range('A2:E100').ClearContents()
     $missingInputAccepted = [bool]$excel.Run('검증_필수값검증')
     Assert-Check (-not $missingInputAccepted) '필수값이 비어 있으면 저장 검증이 거부됨'
     L "테스트 데이터 정리(기초자료입력 초기화, DB 2행 삭제) 완료"

@@ -51,6 +51,32 @@ try {
         L "DB_업체 시트 복구 생성 완료"
     }
     try {
+        $wsCommittee = $wb.Worksheets.Item("DB_위원")
+    } catch {
+        $wsCommittee = $wb.Worksheets.Add()
+        $wsCommittee.Name = "DB_위원"
+        $committeeHeaders = @("레코드순번", "행번호", "역할직위", "마스킹식별표시")
+        for ($i = 0; $i -lt $committeeHeaders.Count; $i++) {
+            $wsCommittee.Cells.Item(1, $i + 1).Value2 = $committeeHeaders[$i]
+            $wsCommittee.Cells.Item(1, $i + 1).Font.Bold = $true
+        }
+        $wsCommittee.Rows.Item(1).AutoFilter() | Out-Null
+        L "DB_위원 시트 복구 생성 완료"
+    }
+    try {
+        $wsScore = $wb.Worksheets.Item("DB_평가")
+    } catch {
+        $wsScore = $wb.Worksheets.Add()
+        $wsScore.Name = "DB_평가"
+        $scoreHeaders = @("레코드순번", "행번호", "평가항목", "배점", "점수")
+        for ($i = 0; $i -lt $scoreHeaders.Count; $i++) {
+            $wsScore.Cells.Item(1, $i + 1).Value2 = $scoreHeaders[$i]
+            $wsScore.Cells.Item(1, $i + 1).Font.Bold = $true
+        }
+        $wsScore.Rows.Item(1).AutoFilter() | Out-Null
+        L "DB_평가 시트 복구 생성 완료"
+    }
+    try {
         $blankSheet = $wb.Worksheets.Item("Sheet2")
         if ($blankSheet.UsedRange.CountLarge -eq 1 -and [string]::IsNullOrWhiteSpace([string]$blankSheet.Range("A1").Value2)) {
             $excel.DisplayAlerts = $false
@@ -104,6 +130,8 @@ Private Sub 초기화_실행(ByVal showMessage As Boolean)
         .Range("C25").Value = ""
         .Range("B29:D38").ClearContents
         .Range("B44:B53").ClearContents
+        .Range("B58:C67").ClearContents
+        .Range("B72:D81").ClearContents
         .Range("H1").Value = ""
     End With
     If showMessage Then MsgBox "기초자료가 초기화되었습니다.", vbInformation
@@ -247,6 +275,232 @@ Public Function 검증_업체중복경고() As Boolean
     검증_업체중복경고 = False
 End Function
 
+Private Function 위원행검증(ByVal wsIn As Worksheet, ByVal showMessage As Boolean) As Boolean
+    Dim sourceRow As Long, roleName As String, maskedLabel As String
+    Dim hasRole As Boolean, hasMask As Boolean
+    위원행검증 = True
+    For sourceRow = 58 To 67
+        roleName = Trim(wsIn.Cells(sourceRow, 2).Value & "")
+        maskedLabel = Trim(wsIn.Cells(sourceRow, 3).Value & "")
+        hasRole = roleName <> ""
+        hasMask = maskedLabel <> ""
+        If hasRole Or hasMask Then
+            If Not hasRole Or Not hasMask Or Len(roleName) < 2 Or Len(roleName) > 50 Or Len(maskedLabel) < 2 Or Len(maskedLabel) > 50 Then
+                If showMessage Then MsgBox "위원 " & (sourceRow - 57) & "행은 역할·직위와 마스킹 식별표시를 각각 2~50자로 입력하세요.", vbExclamation
+                위원행검증 = False
+                Exit Function
+            End If
+            If Not 마스킹식별표시허용(maskedLabel) Then
+                If showMessage Then MsgBox "위원 식별표시는 실제 성명 대신 '위원 ○○', '위원 **', '평가위원 ○○', '평가위원 **' 형식만 사용하세요. 연락처·서명은 입력·저장하지 않습니다.", vbExclamation
+                위원행검증 = False
+                Exit Function
+            End If
+        End If
+    Next sourceRow
+End Function
+
+Public Function 검증_위원행검증() As Boolean
+    검증_위원행검증 = 위원행검증(Sheets("기초자료입력"), False)
+End Function
+
+Public Function 검증_위원중복경고() As Boolean
+    Dim wsIn As Worksheet, sourceRow As Long, compareRow As Long
+    Dim roleName As String, compareRole As String
+    Set wsIn = Sheets("기초자료입력")
+    For sourceRow = 58 To 67
+        roleName = Trim(wsIn.Cells(sourceRow, 2).Value & "")
+        If roleName <> "" Then
+            For compareRow = sourceRow + 1 To 67
+                compareRole = Trim(wsIn.Cells(compareRow, 2).Value & "")
+                If compareRole <> "" And StrComp(roleName, compareRole, vbTextCompare) = 0 Then
+                    검증_위원중복경고 = True
+                    Exit Function
+                End If
+            Next compareRow
+        End If
+    Next sourceRow
+    검증_위원중복경고 = False
+End Function
+
+Private Function 평가행검증(ByVal wsIn As Worksheet, ByVal showMessage As Boolean) As Boolean
+    Dim sourceRow As Long, itemName As String
+    Dim hasItem As Boolean, hasAllocation As Boolean, hasScore As Boolean
+    평가행검증 = True
+    For sourceRow = 72 To 81
+        itemName = Trim(wsIn.Cells(sourceRow, 2).Value & "")
+        hasItem = itemName <> ""
+        hasAllocation = Trim(wsIn.Cells(sourceRow, 3).Value & "") <> ""
+        hasScore = Trim(wsIn.Cells(sourceRow, 4).Value & "") <> ""
+        If hasItem Or hasAllocation Or hasScore Then
+            If Not hasItem Or Not hasAllocation Or Not hasScore Or Len(itemName) < 2 Or Len(itemName) > 100 Or _
+                Not IsNumeric(wsIn.Cells(sourceRow, 3).Value) Or Not IsNumeric(wsIn.Cells(sourceRow, 4).Value) Or _
+                CDbl(wsIn.Cells(sourceRow, 3).Value) < 0 Or CDbl(wsIn.Cells(sourceRow, 4).Value) < 0 Or _
+                CDbl(wsIn.Cells(sourceRow, 4).Value) > CDbl(wsIn.Cells(sourceRow, 3).Value) Then
+                If showMessage Then MsgBox "평가 " & (sourceRow - 71) & "행은 평가항목(2~100자), 0 이상 배점, 0 이상이며 배점 이하인 점수를 모두 입력하세요.", vbExclamation
+                평가행검증 = False
+                Exit Function
+            End If
+        End If
+    Next sourceRow
+End Function
+
+Private Function 마스킹식별표시허용(ByVal maskedLabel As String) As Boolean
+    마스킹식별표시허용 = maskedLabel = "위원 ○○" Or maskedLabel = "위원 **" Or _
+        maskedLabel = "위원 ○*" Or maskedLabel = "위원 *○" Or _
+        maskedLabel = "평가위원 ○○" Or maskedLabel = "평가위원 **" Or _
+        maskedLabel = "평가위원 ○*" Or maskedLabel = "평가위원 *○"
+End Function
+
+Private Function 정수범위(ByVal value As Variant, ByVal minimum As Long, ByVal maximum As Long) As Boolean
+    If Not IsNumeric(value) Then Exit Function
+    If CDbl(value) <> Fix(CDbl(value)) Then Exit Function
+    정수범위 = CDbl(value) >= minimum And CDbl(value) <= maximum
+End Function
+
+Private Function 양수숫자(ByVal value As Variant) As Boolean
+    양수숫자 = IsNumeric(value)
+    If 양수숫자 Then 양수숫자 = CDbl(value) > 0
+End Function
+
+Private Function 음이아닌숫자(ByVal value As Variant) As Boolean
+    음이아닌숫자 = IsNumeric(value)
+    If 음이아닌숫자 Then 음이아닌숫자 = CDbl(value) >= 0
+End Function
+
+Private Function 품목금액일치(ByVal quantity As Variant, ByVal unitPrice As Variant, ByVal amount As Variant) As Boolean
+    If Not 양수숫자(quantity) Or Not 양수숫자(unitPrice) Or Not IsNumeric(amount) Then Exit Function
+    품목금액일치 = CDbl(amount) = CDbl(quantity) * CDbl(unitPrice)
+End Function
+
+Private Function 평가점수범위(ByVal allocation As Variant, ByVal score As Variant) As Boolean
+    If Not 음이아닌숫자(allocation) Or Not 음이아닌숫자(score) Then Exit Function
+    평가점수범위 = CDbl(score) <= CDbl(allocation)
+End Function
+
+Private Function 마지막사용행(ByVal ws As Worksheet) As Long
+    Dim lastCell As Range
+    On Error Resume Next
+    Set lastCell = ws.Cells.Find(What:="*", LookIn:=xlFormulas, SearchOrder:=xlByRows, SearchDirection:=xlPrevious)
+    On Error GoTo 0
+    If lastCell Is Nothing Then
+        마지막사용행 = 1
+    Else
+        마지막사용행 = lastCell.Row
+    End If
+End Function
+
+Private Function DB레코드존재(ByVal wsDB As Worksheet, ByVal seq As Long) As Boolean
+    Dim rowIndex As Long
+    For rowIndex = 2 To 마지막사용행(wsDB)
+        If wsDB.Cells(rowIndex, 1).Value = seq Then
+            DB레코드존재 = True
+            Exit Function
+        End If
+    Next rowIndex
+End Function
+
+Private Function 저장경계검증(ByRef reason As String) As Boolean
+    Dim wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet
+    Dim rowIndex As Long, lastRow As Long, seq As Long
+    Dim vendorName As String, roleName As String, maskedLabel As String, itemName As String
+    Set wsDB = Sheets("DB")
+    Set wsItems = Sheets("DB_품목")
+    Set wsVendors = Sheets("DB_업체")
+    Set wsCommittee = Sheets("DB_위원")
+    Set wsScore = Sheets("DB_평가")
+
+    lastRow = 마지막사용행(wsDB)
+    For rowIndex = 2 To lastRow
+        If Application.WorksheetFunction.CountA(wsDB.Range("A" & rowIndex & ":T" & rowIndex)) > 0 Then
+            If Not 정수범위(wsDB.Cells(rowIndex, 1).Value, 1, 2147483647) Or _
+               Trim(wsDB.Cells(rowIndex, 2).Value & "") = "" Or Trim(wsDB.Cells(rowIndex, 3).Value & "") = "" Or _
+               Trim(wsDB.Cells(rowIndex, 8).Value & "") = "" Or Trim(wsDB.Cells(rowIndex, 16).Value & "") = "" Then
+                reason = "DB " & rowIndex & "행은 순번과 학교명·학년도·구매명·제목을 모두 갖춘 업무 레코드여야 합니다."
+                Exit Function
+            End If
+        End If
+    Next rowIndex
+
+    lastRow = 마지막사용행(wsItems)
+    For rowIndex = 2 To lastRow
+        If Application.WorksheetFunction.CountA(wsItems.Range("A" & rowIndex & ":F" & rowIndex)) > 0 Then
+            If Not 정수범위(wsItems.Cells(rowIndex, 1).Value, 1, 2147483647) Then
+                reason = "DB_품목 " & rowIndex & "행의 레코드순번이 올바르지 않습니다."
+                Exit Function
+            End If
+            seq = CLng(wsItems.Cells(rowIndex, 1).Value)
+            If Not DB레코드존재(wsDB, seq) Or Not 정수범위(wsItems.Cells(rowIndex, 2).Value, 1, 10) Or _
+               Trim(wsItems.Cells(rowIndex, 3).Value & "") = "" Or _
+               Not 품목금액일치(wsItems.Cells(rowIndex, 4).Value, wsItems.Cells(rowIndex, 5).Value, wsItems.Cells(rowIndex, 6).Value) Then
+                reason = "DB_품목 " & rowIndex & "행은 연결된 레코드와 완전한 품목·수량·단가·금액을 가져야 합니다."
+                Exit Function
+            End If
+        End If
+    Next rowIndex
+
+    lastRow = 마지막사용행(wsVendors)
+    For rowIndex = 2 To lastRow
+        If Application.WorksheetFunction.CountA(wsVendors.Range("A" & rowIndex & ":C" & rowIndex)) > 0 Then
+            vendorName = Trim(wsVendors.Cells(rowIndex, 3).Value & "")
+            If Not 정수범위(wsVendors.Cells(rowIndex, 1).Value, 1, 2147483647) Or _
+               Not DB레코드존재(wsDB, CLng(Val(wsVendors.Cells(rowIndex, 1).Value))) Or _
+               Not 정수범위(wsVendors.Cells(rowIndex, 2).Value, 1, 10) Or Len(vendorName) < 2 Or Len(vendorName) > 150 Or _
+               InStr(vendorName, "대표자") > 0 Or InStr(vendorName, "대표") > 0 Or InStr(vendorName, "연락처") > 0 Or _
+               InStr(vendorName, "전화") > 0 Or InStr(vendorName, "휴대폰") > 0 Or InStr(vendorName, "사업자번호") > 0 Or _
+               숫자개수(vendorName) >= 8 Or vendorName Like "*[0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]*" Or _
+               vendorName Like "*0[0-9]-[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]*" Or _
+               vendorName Like "*01[0-9]-[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]*" Then
+                reason = "DB_업체 " & rowIndex & "행에는 업체명만 허용되며 대표자·연락처·전화번호·사업자번호는 저장할 수 없습니다."
+                Exit Function
+            End If
+        End If
+    Next rowIndex
+
+    lastRow = 마지막사용행(wsCommittee)
+    For rowIndex = 2 To lastRow
+        If Application.WorksheetFunction.CountA(wsCommittee.Range("A" & rowIndex & ":D" & rowIndex)) > 0 Then
+            roleName = Trim(wsCommittee.Cells(rowIndex, 3).Value & "")
+            maskedLabel = Trim(wsCommittee.Cells(rowIndex, 4).Value & "")
+            If Not 정수범위(wsCommittee.Cells(rowIndex, 1).Value, 1, 2147483647) Or _
+               Not DB레코드존재(wsDB, CLng(Val(wsCommittee.Cells(rowIndex, 1).Value))) Or _
+               Not 정수범위(wsCommittee.Cells(rowIndex, 2).Value, 1, 10) Or Len(roleName) < 2 Or Len(roleName) > 50 Or _
+               Len(maskedLabel) < 2 Or Len(maskedLabel) > 50 Or Not 마스킹식별표시허용(maskedLabel) Then
+                reason = "DB_위원 " & rowIndex & "행은 역할·직위와 허용된 마스킹 식별표시를 모두 가져야 합니다."
+                Exit Function
+            End If
+        End If
+    Next rowIndex
+
+    lastRow = 마지막사용행(wsScore)
+    For rowIndex = 2 To lastRow
+        If Application.WorksheetFunction.CountA(wsScore.Range("A" & rowIndex & ":E" & rowIndex)) > 0 Then
+            itemName = Trim(wsScore.Cells(rowIndex, 3).Value & "")
+            If Not 정수범위(wsScore.Cells(rowIndex, 1).Value, 1, 2147483647) Or _
+               Not DB레코드존재(wsDB, CLng(Val(wsScore.Cells(rowIndex, 1).Value))) Or _
+               Not 정수범위(wsScore.Cells(rowIndex, 2).Value, 1, 10) Or Len(itemName) < 2 Or Len(itemName) > 100 Or _
+               Not 평가점수범위(wsScore.Cells(rowIndex, 4).Value, wsScore.Cells(rowIndex, 5).Value) Then
+                reason = "DB_평가 " & rowIndex & "행은 평가항목·배점·점수가 완전하고 점수가 배점 이하이어야 합니다."
+                Exit Function
+            End If
+        End If
+    Next rowIndex
+    저장경계검증 = True
+End Function
+
+Public Function 검증_저장경계() As Boolean
+    Dim reason As String
+    검증_저장경계 = 저장경계검증(reason)
+End Function
+
+Public Function 검증_저장경계_메시지() As String
+    Dim reason As String
+    If Not 저장경계검증(reason) Then 검증_저장경계_메시지 = reason
+End Function
+
+Public Function 검증_평가행검증() As Boolean
+    검증_평가행검증 = 평가행검증(Sheets("기초자료입력"), False)
+End Function
+
 Private Sub 품목복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsItems As Worksheet, ByVal seq As Long)
     Dim rowIndex As Long, sourceRow As Long, targetRow As Long
     For rowIndex = wsItems.Cells(wsItems.Rows.Count, 1).End(xlUp).Row To 2 Step -1
@@ -287,6 +541,43 @@ Private Sub 업체복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsVendor
     Next sourceRow
 End Sub
 
+Private Sub 위원복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsCommittee As Worksheet, ByVal seq As Long)
+    Dim rowIndex As Long, sourceRow As Long, targetRow As Long
+    For rowIndex = wsCommittee.Cells(wsCommittee.Rows.Count, 1).End(xlUp).Row To 2 Step -1
+        If wsCommittee.Cells(rowIndex, 1).Value = seq Then wsCommittee.Rows(rowIndex).Delete
+    Next rowIndex
+    targetRow = wsCommittee.Cells(wsCommittee.Rows.Count, 1).End(xlUp).Row + 1
+    If targetRow < 2 Then targetRow = 2
+    For sourceRow = 58 To 67
+        If Trim(wsIn.Cells(sourceRow, 2).Value & "") <> "" Then
+            wsCommittee.Cells(targetRow, 1).Value = seq
+            wsCommittee.Cells(targetRow, 2).Value = sourceRow - 57
+            wsCommittee.Cells(targetRow, 3).Value = wsIn.Cells(sourceRow, 2).Value
+            wsCommittee.Cells(targetRow, 4).Value = wsIn.Cells(sourceRow, 3).Value
+            targetRow = targetRow + 1
+        End If
+    Next sourceRow
+End Sub
+
+Private Sub 평가복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsScore As Worksheet, ByVal seq As Long)
+    Dim rowIndex As Long, sourceRow As Long, targetRow As Long
+    For rowIndex = wsScore.Cells(wsScore.Rows.Count, 1).End(xlUp).Row To 2 Step -1
+        If wsScore.Cells(rowIndex, 1).Value = seq Then wsScore.Rows(rowIndex).Delete
+    Next rowIndex
+    targetRow = wsScore.Cells(wsScore.Rows.Count, 1).End(xlUp).Row + 1
+    If targetRow < 2 Then targetRow = 2
+    For sourceRow = 72 To 81
+        If Trim(wsIn.Cells(sourceRow, 2).Value & "") <> "" Then
+            wsScore.Cells(targetRow, 1).Value = seq
+            wsScore.Cells(targetRow, 2).Value = sourceRow - 71
+            wsScore.Cells(targetRow, 3).Value = wsIn.Cells(sourceRow, 2).Value
+            wsScore.Cells(targetRow, 4).Value = wsIn.Cells(sourceRow, 3).Value
+            wsScore.Cells(targetRow, 5).Value = wsIn.Cells(sourceRow, 4).Value
+            targetRow = targetRow + 1
+        End If
+    Next sourceRow
+End Sub
+
 Sub 저장하기()
     Call 저장하기_실행(True)
 End Sub
@@ -297,14 +588,19 @@ End Sub
 
 Private Sub 저장하기_실행(ByVal showMessage As Boolean)
     If Not 필수값검증() Then Exit Sub
-    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
     Set wsItems = Sheets("DB_품목")
     Set wsVendors = Sheets("DB_업체")
+    Set wsCommittee = Sheets("DB_위원")
+    Set wsScore = Sheets("DB_평가")
     If Not 품목행검증(wsIn, showMessage) Then Exit Sub
     If Not 업체행검증(wsIn, showMessage) Then Exit Sub
+    If Not 위원행검증(wsIn, showMessage) Then Exit Sub
+    If Not 평가행검증(wsIn, showMessage) Then Exit Sub
     If showMessage And 검증_업체중복경고() Then MsgBox "중복된 업체명이 있습니다. 실제 동일 업체인지 확인한 뒤 저장하세요.", vbExclamation
+    If showMessage And 검증_위원중복경고() Then MsgBox "중복된 위원 역할·직위가 있습니다. 실제 구성과 역할을 확인하세요.", vbExclamation
 
     Dim lastRow As Long
     lastRow = wsDB.Cells(wsDB.Rows.Count, 1).End(xlUp).Row
@@ -321,6 +617,8 @@ Private Sub 저장하기_실행(ByVal showMessage As Boolean)
     Call 필드복사_기초자료_DB(wsIn, wsDB, newRow)
     Call 품목복사_기초자료_DB(wsIn, wsItems, seq)
     Call 업체복사_기초자료_DB(wsIn, wsVendors, seq)
+    Call 위원복사_기초자료_DB(wsIn, wsCommittee, seq)
+    Call 평가복사_기초자료_DB(wsIn, wsScore, seq)
 
     wsIn.Range("H1").Value = seq
     If showMessage Then MsgBox "저장되었습니다. (순번 " & seq & ")", vbInformation
@@ -336,14 +634,19 @@ End Sub
 
 Private Sub 수정하기_실행(ByVal showMessage As Boolean)
     If Not 필수값검증() Then Exit Sub
-    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
     Set wsItems = Sheets("DB_품목")
     Set wsVendors = Sheets("DB_업체")
+    Set wsCommittee = Sheets("DB_위원")
+    Set wsScore = Sheets("DB_평가")
     If Not 품목행검증(wsIn, showMessage) Then Exit Sub
     If Not 업체행검증(wsIn, showMessage) Then Exit Sub
+    If Not 위원행검증(wsIn, showMessage) Then Exit Sub
+    If Not 평가행검증(wsIn, showMessage) Then Exit Sub
     If showMessage And 검증_업체중복경고() Then MsgBox "중복된 업체명이 있습니다. 실제 동일 업체인지 확인한 뒤 수정하세요.", vbExclamation
+    If showMessage And 검증_위원중복경고() Then MsgBox "중복된 위원 역할·직위가 있습니다. 실제 구성과 역할을 확인하세요.", vbExclamation
 
     Dim seq As Variant
     seq = wsIn.Range("H1").Value
@@ -360,6 +663,8 @@ Private Sub 수정하기_실행(ByVal showMessage As Boolean)
     Call 필드복사_기초자료_DB(wsIn, wsDB, r)
     Call 품목복사_기초자료_DB(wsIn, wsItems, CLng(seq))
     Call 업체복사_기초자료_DB(wsIn, wsVendors, CLng(seq))
+    Call 위원복사_기초자료_DB(wsIn, wsCommittee, CLng(seq))
+    Call 평가복사_기초자료_DB(wsIn, wsScore, CLng(seq))
     If showMessage Then MsgBox "수정되었습니다. (순번 " & seq & ")", vbInformation
 End Sub
 
@@ -379,11 +684,13 @@ Public Sub 검증_첫레코드불러오기()
 End Sub
 
 Private Sub 불러오기_순번(ByVal seq As Long, ByVal showMessage As Boolean)
-    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
     Set wsItems = Sheets("DB_품목")
     Set wsVendors = Sheets("DB_업체")
+    Set wsCommittee = Sheets("DB_위원")
+    Set wsScore = Sheets("DB_평가")
     Dim r As Long
     r = seq + 1
     If wsDB.Cells(r, 1).Value <> seq Then
@@ -417,6 +724,27 @@ Private Sub 불러오기_순번(ByVal seq As Long, ByVal showMessage As Boolean)
                 wsIn.Cells(inputRow, 2).Value = wsItems.Cells(itemRow, 3).Value
                 wsIn.Cells(inputRow, 3).Value = wsItems.Cells(itemRow, 4).Value
                 wsIn.Cells(inputRow, 4).Value = wsItems.Cells(itemRow, 5).Value
+            End If
+        End If
+    Next itemRow
+    wsIn.Range("B58:C67").ClearContents
+    For itemRow = 2 To wsCommittee.Cells(wsCommittee.Rows.Count, 1).End(xlUp).Row
+        If wsCommittee.Cells(itemRow, 1).Value = seq Then
+            inputRow = 57 + CLng(wsCommittee.Cells(itemRow, 2).Value)
+            If inputRow >= 58 And inputRow <= 67 Then
+                wsIn.Cells(inputRow, 2).Value = wsCommittee.Cells(itemRow, 3).Value
+                wsIn.Cells(inputRow, 3).Value = wsCommittee.Cells(itemRow, 4).Value
+            End If
+        End If
+    Next itemRow
+    wsIn.Range("B72:D81").ClearContents
+    For itemRow = 2 To wsScore.Cells(wsScore.Rows.Count, 1).End(xlUp).Row
+        If wsScore.Cells(itemRow, 1).Value = seq Then
+            inputRow = 71 + CLng(wsScore.Cells(itemRow, 2).Value)
+            If inputRow >= 72 And inputRow <= 81 Then
+                wsIn.Cells(inputRow, 2).Value = wsScore.Cells(itemRow, 3).Value
+                wsIn.Cells(inputRow, 3).Value = wsScore.Cells(itemRow, 4).Value
+                wsIn.Cells(inputRow, 4).Value = wsScore.Cells(itemRow, 5).Value
             End If
         End If
     Next itemRow
@@ -712,6 +1040,24 @@ Private Sub Workbook_Open()
     For r = 5 To lastRow
         wsSel.Cells(r, 1).Value = False
     Next r
+
+    ' UserInterfaceOnly 보호 설정은 파일을 다시 열면 유지되지 않으므로, 매크로 허용 후 다시 적용한다.
+    ' 비밀번호는 사용하지 않으며 일반 사용자의 직접 편집만 제한한다.
+    Dim internalName As Variant
+    For Each internalName In Array("DB", "DB_품목", "DB_업체", "DB_위원", "DB_평가")
+        Sheets(CStr(internalName)).Protect Password:="", DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True
+    Next internalName
+End Sub
+
+Private Sub Workbook_BeforeSave(ByVal SaveAsUI As Boolean, Cancel As Boolean)
+    Dim reason As String
+    reason = 검증_저장경계_메시지()
+    If reason <> "" Then
+        Cancel = True
+        If Application.Visible And Application.UserControl Then
+            MsgBox "저장이 취소되었습니다. " & reason, vbExclamation
+        End If
+    End If
 End Sub
 '@
     $codeThisWb = $codeThisWb -replace "`r`n", "`r" -replace "`n", "`r"
