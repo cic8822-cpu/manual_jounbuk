@@ -423,6 +423,30 @@ End Sub
     $codeNavigation = @'
 Option Explicit
 
+Sub 계약방법안내_기초자료반영()
+    Call 계약방법안내_기초자료반영_내부(True)
+End Sub
+
+Public Sub 검증_계약방법안내_기초자료반영()
+    Call 계약방법안내_기초자료반영_내부(False)
+End Sub
+
+Private Sub 계약방법안내_기초자료반영_내부(ByVal showMessage As Boolean)
+    Dim wsMethod As Worksheet, selectedMethod As String
+    Set wsMethod = Sheets("계약방법안내")
+    If Trim(wsMethod.Range("B5").Value & "") <> "예" Or Trim(wsMethod.Range("B6").Value & "") <> "예" Then
+        If showMessage Then MsgBox "두 확인 항목이 모두 '예'인 경우에만 매뉴얼 예시를 반영합니다. 그 밖의 계약방법은 최신 법령·지침과 사실관계를 행정실 담당자가 검토하세요.", vbExclamation
+        Exit Sub
+    End If
+    selectedMethod = Trim(wsMethod.Range("B7").Value & "")
+    If selectedMethod = "" Then
+        If showMessage Then MsgBox "반영할 계약방법 안내값이 없습니다.", vbExclamation
+        Exit Sub
+    End If
+    Sheets("기초자료입력").Range("C14").Value = selectedMethod
+    If showMessage Then MsgBox "계약방식(B-03)에 매뉴얼 예시를 반영했습니다. 출력 전 최신 법령·지침과 사실관계를 최종 확인하세요.", vbInformation
+End Sub
+
 Sub 학교검색_실행()
     Call 학교검색_실행_내부(True)
 End Sub
@@ -627,6 +651,14 @@ End Sub
     $btnFlow.OnAction = "관련FormID로이동"
     $btnFlow.Name = "btn관련FormID이동"
     L "절차안내 Form ID 이동 버튼 배치 완료"
+
+    $wsMethod = $wb.Worksheets.Item("계약방법안내")
+    try { $wsMethod.Buttons("btn계약방법반영").Delete() } catch { L "기존 버튼 btn계약방법반영 없음" }
+    $btnMethod = $wsMethod.Buttons().Add(520, 58, 200, 24)
+    $btnMethod.Caption = "계약방법을 기초자료에 반영"
+    $btnMethod.OnAction = "계약방법안내_기초자료반영"
+    $btnMethod.Name = "btn계약방법반영"
+    L "계약방법안내 반영 버튼 배치 완료"
 
     # ---- 저장 ----
     $wb.Save()

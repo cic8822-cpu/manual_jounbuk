@@ -69,9 +69,9 @@ try {
 
     # 4. 시트 목록
     L "시트 목록: $((@($wb.Worksheets) | ForEach-Object { $_.Name }) -join ', ')"
-    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', '서식선택_출력', 'F-007_구매요청기안문', 'F-024_단가비율표', '학교정보', '학교검색', '절차안내')
+    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', '서식선택_출력', 'F-007_구매요청기안문', 'F-024_단가비율표', '학교정보', '학교검색', '절차안내', '계약방법안내')
     $sheetNames = @($wb.Worksheets | ForEach-Object { $_.Name })
-    Assert-Check ($sheetNames.Count -eq 10 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) '필수 10개 시트가 모두 존재함'
+    Assert-Check ($sheetNames.Count -eq 11 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) '필수 11개 시트가 모두 존재함'
 
     # 4a. 학교검색 및 절차안내 정적 구조
     $wsSchool = $wb.Worksheets.Item('학교정보')
@@ -80,6 +80,8 @@ try {
     Assert-Check ($wsSearch.Range('A1').Value2 -match '학교정보 검색' -and $wsSearch.Range('B3,D3,F3').Interior.Color -eq 16777164) '학교명·지역·급별 검색 조건 UI가 존재함'
     $wsFlow = $wb.Worksheets.Item('절차안내')
     Assert-Check ($wsFlow.Range('A5:A13').Count -eq 9 -and $wsFlow.Range('D5').Value2 -eq 'F-001' -and $wsFlow.Range('D13').Value2 -eq 'F-044') '교복구매 9단계와 대표 Form ID 이동값이 존재함'
+    $wsMethod = $wb.Worksheets.Item('계약방법안내')
+    Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B5').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B6').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B7').Value2) -and $wsMethod.Buttons('btn계약방법반영').OnAction -eq '계약방법안내_기초자료반영') '계약방법안내가 빈 확인값으로 시작하며 반영 버튼이 존재함'
 
     # 5. A4 1쪽 자연 충족 재확인 (F-007, F-024)
     foreach ($sn in @("F-007_구매요청기안문","F-024_단가비율표")) {
@@ -106,6 +108,17 @@ try {
     $wsIn.Range("C30").Value2 = 100
     $wsIn.Range("D30").Value2 = 40000
     $excel.CalculateFullRebuild()
+
+    $wsIn.Range('C14').Value2 = '수동입력값'
+    Invoke-ValidationMacro -macroName '검증_계약방법안내_기초자료반영'
+    Assert-Check ($wsIn.Range('C14').Value2 -eq '수동입력값') '계약방법안내가 확인값이 비어 있으면 B-03을 덮어쓰지 않음'
+    $wsMethod.Range('B5').Value2 = '아니오'
+    $wsMethod.Range('B6').Value2 = '예'
+    Invoke-ValidationMacro -macroName '검증_계약방법안내_기초자료반영'
+    Assert-Check ($wsIn.Range('C14').Value2 -eq '수동입력값') '계약방법안내가 확인값 미충족 시 B-03을 덮어쓰지 않음'
+    $wsMethod.Range('B5:B6').Value2 = '예'
+    Invoke-ValidationMacro -macroName '검증_계약방법안내_기초자료반영'
+    Assert-Check ($wsIn.Range('C14').Value2 -eq '2단계 입찰(규격·가격 동시)') '계약방법안내가 두 확인값을 명시적으로 충족 시 B-03에 예시를 반영함'
 
     try {
         Invoke-ValidationMacro -macroName '검증_저장하기'

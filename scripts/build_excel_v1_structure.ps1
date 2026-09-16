@@ -87,7 +87,7 @@ try {
     $fields2 = @(
         @{r=12; id="B-01"; label="구매명 *"},
         @{r=13; id="B-02"; label="구매 학년"},
-        @{r=14; id="B-03"; label="계약방식 (목록 확정 전 — 자유 입력)"},
+        @{r=14; id="B-03"; label="계약방식 (계약방법안내에서 검토 후 반영)"},
         @{r=15; id="B-04"; label="기초금액(원)"},
         @{r=16; id="B-05"; label="예정수량"},
         @{r=17; id="B-06"; label="납품기한"},
@@ -579,6 +579,46 @@ try {
     $ws.Range("A5:D13").VerticalAlignment = -4160
     $ws.Range("B5:C13").WrapText = $true
     L "절차안내 시트 작성 완료 (9단계 및 관련 Form ID 이동 UI)"
+
+    # ---- 11. 계약방법안내 (교복 매뉴얼의 2단계 입찰 예시를 확인 후 반영) ----
+    $wsMethod = $wbNew.Worksheets.Add()
+    $wsMethod.Name = "계약방법안내"
+    $ws = $wsMethod
+    $ws.Range("A1").Value2 = "교복 학교주관구매 계약방법 안내"
+    $ws.Range("A1").Font.Size = 13
+    $ws.Range("A1").Font.Bold = $true
+    $ws.Range("A2").Value2 = "교복 매뉴얼의 2단계 입찰(규격·가격 동시) 예시를 안내합니다. 이 시트는 계약금액·예외사유·법령 적용에 따른 계약방법을 자동 판정하지 않으며, 행정실 담당자가 최신 법령·지침과 사실관계를 확인한 뒤에만 반영해야 합니다."
+    $ws.Range("A2:E2").Merge() | Out-Null
+    $ws.Range("A2").WrapText = $true
+    $ws.Rows.Item(2).RowHeight = 42
+    $ws.Range("A4").Value2 = "확인 항목"
+    $ws.Range("B4").Value2 = "확인 값"
+    $ws.Range("C4").Value2 = "안내"
+    $ws.Range("A4:C4").Font.Bold = $true
+    $ws.Range("A4:C4").Interior.Color = 15987699
+    $ws.Range("A5").Value2 = "규격(제안서) 심사가 필요한가"
+    $ws.Range("A6").Value2 = "가격 경쟁 절차가 필요한가"
+    $ws.Range("A7").Value2 = "안내된 계약방법"
+    $ws.Range("B5:B6").Interior.Color = 16777164
+    $ws.Range("B5:B6").Validation.Delete()
+    $ws.Range("B5:B6").Validation.Add(3, 1, 1, "예,아니오")
+    $ws.Range("B7").Formula = '=IF(AND(B5="예",B6="예"),"2단계 입찰(규격·가격 동시)","")'
+    $ws.Range("C5").Value2 = "교복의 디자인·재질·바느질·A/S 등 품질 기준을 확인함"
+    $ws.Range("C6").Value2 = "품질 적격 업체를 대상으로 가격입찰을 실시함"
+    $ws.Range("C7").Value2 = "매뉴얼 예시: 지방계약법 시행령 제18조 제3항에 따른 2단계 입찰"
+    $ws.Range("A4:C7").Borders.LineStyle = 1
+    $ws.Range("A5:C7").VerticalAlignment = -4160
+    $ws.Range("C5:C7").WrapText = $true
+    $ws.Columns.Item("A").ColumnWidth = 32
+    $ws.Columns.Item("B").ColumnWidth = 28
+    $ws.Columns.Item("C").ColumnWidth = 62
+    $ws.Range("A9").Value2 = "반영 전 확인"
+    $ws.Range("A9").Font.Bold = $true
+    $ws.Range("A10").Value2 = "두 확인값은 비어 있는 상태로 시작합니다. 담당자가 최신 법령·지침과 사실관계를 확인한 뒤 각각 '예'를 명시적으로 선택한 경우에만 [계약방법을 기초자료에 반영] 버튼이 B-03에 안내값을 기록합니다. 그 밖의 경우 자동 추천하지 않습니다."
+    $ws.Range("A10:E10").Merge() | Out-Null
+    $ws.Range("A10").WrapText = $true
+    $ws.Rows.Item(10).RowHeight = 36
+    L "계약방법안내 시트 작성 완료 (2단계 입찰 예시 확인 및 수동 검토 경계)"
 
     # ---- 저장 ----
     $wsFirst.Activate()
