@@ -93,9 +93,11 @@ try {
 
     # 4. 시트 목록
     L "시트 목록: $((@($wb.Worksheets) | ForEach-Object { $_.Name }) -join ', ')"
+    # DB_정성평가·F-016_정성적평가는 구조만 추가된 상태(저장·출력 미연동)라 필수 목록에는 아직 넣지
+    # 않지만, 존재 자체는 인정해야 하므로 총 개수를 19로 늘림(둘 다 있어야 정확히 19개).
     $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', 'DB_업체', 'DB_위원', 'DB_평가', 'DB_정량평가', '서식선택_출력', 'F-007_구매요청기안문', 'F-014_평가항목배점기준', 'F-015_정량적평가', 'F-024_단가비율표', '학교정보', '학교검색', '절차안내', '계약방법안내')
     $sheetNames = @($wb.Worksheets | ForEach-Object { $_.Name })
-    Assert-Check ($sheetNames.Count -eq 17 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) '필수 17개 시트가 모두 존재함'
+    Assert-Check ($sheetNames.Count -eq 19 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0 -and 'DB_정성평가' -in $sheetNames -and 'F-016_정성적평가' -in $sheetNames) '필수 17개 시트와 F-016 준비 중 시트 2개가 모두 존재함'
     $wsProtectedDB = $wb.Worksheets.Item('DB')
     $wsProtectedItems = $wb.Worksheets.Item('DB_품목')
     $wsProtectedVendors = $wb.Worksheets.Item('DB_업체')

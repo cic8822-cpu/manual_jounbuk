@@ -155,7 +155,7 @@ try {
     $ws.Range("E39").NumberFormat = "#,##0"
     $ws.Range("E39").Font.Bold = $true
 
-    $ws.Range("B42").Value2 = "5. 업체 반복행 (R-03 업체명) — 입찰·평가·계약 문서의 공통 후보 목록. C~F열은 F-015 정량평가(수행경험·공인인증·거리적접근성·상한가격) 점수"
+    $ws.Range("B42").Value2 = "5. 업체 반복행 (R-03 업체명) — 입찰·평가·계약 문서의 공통 후보 목록. C~F열은 F-015 정량평가, H~L열은 F-016 정성평가 점수"
     $ws.Range("B42").Font.Bold = $true
     $ws.Range("B43").Value2 = "업체명"
     $ws.Range("C43").Value2 = "수행경험(10)"
@@ -163,12 +163,21 @@ try {
     $ws.Range("E43").Value2 = "거리적접근성(15)"
     $ws.Range("F43").Value2 = "상한가격(15)"
     $ws.Range("G43").Value2 = "F-015 상태"
-    $ws.Range("B43:G43").Font.Bold = $true
+    $ws.Range("H43").Value2 = "재질(15)"
+    $ws.Range("I43").Value2 = "완성도(10)"
+    $ws.Range("J43").Value2 = "A/S(15)"
+    $ws.Range("K43").Value2 = "하자보상(10)"
+    $ws.Range("L43").Value2 = "가감점(-15~5)"
+    $ws.Range("M43").Value2 = "F-016 상태"
+    $ws.Range("B43:M43").Font.Bold = $true
     for ($i = 0; $i -lt 10; $i++) {
         $r = 44 + $i
         $ws.Range("B$r:F$r").Interior.Color = 16777164
         $ws.Range("C$r:F$r").NumberFormat = "0"
         $ws.Range("G$r").Formula = "=IF(B$r=`"`",`"`",IF(AND(ISNUMBER(C$r),ISNUMBER(D$r),ISNUMBER(E$r),ISNUMBER(F$r),C$r>=0,C$r<=10,D$r>=0,D$r<=10,E$r>=0,E$r<=15,F$r>=0,F$r<=15),`"정상`",`"점수 확인`"))"
+        $ws.Range("H$r:L$r").Interior.Color = 16777164
+        $ws.Range("H$r:L$r").NumberFormat = "0"
+        $ws.Range("M$r").Formula = "=IF(B$r=`"`",`"`",IF(AND(ISNUMBER(H$r),ISNUMBER(I$r),ISNUMBER(J$r),ISNUMBER(K$r),ISNUMBER(L$r),H$r>=0,H$r<=15,I$r>=0,I$r<=10,J$r>=0,J$r<=15,K$r>=0,K$r<=10,L$r>=-15,L$r<=5),`"정상`",`"점수 확인`"))"
     }
 
     # R-01/R-02: 위원 역할과 마스킹 식별표시만 저장한다. 실제 성명·연락처·서명은 입력·저장하지 않는다.
@@ -278,6 +287,17 @@ try {
     $wsQuant.Rows.Item(1).AutoFilter() | Out-Null
     L "DB_정량평가 시트 작성 완료 (F-015 업체별 정량평가 점수 저장용)"
 
+    # ---- 5e. DB_정성평가 (F-016 업체별 정성평가 점수 정규화 저장) ----
+    $wsQual = $wbNew.Worksheets.Add()
+    $wsQual.Name = "DB_정성평가"
+    $qualHeaders = @("레코드순번", "행번호", "재질점수", "완성도점수", "AS점수", "하자보상점수", "가감점")
+    for ($i = 0; $i -lt $qualHeaders.Count; $i++) {
+        $wsQual.Cells.Item(1, $i + 1).Value2 = $qualHeaders[$i]
+        $wsQual.Cells.Item(1, $i + 1).Font.Bold = $true
+    }
+    $wsQual.Rows.Item(1).AutoFilter() | Out-Null
+    L "DB_정성평가 시트 작성 완료 (F-016 업체별 정성평가 점수 저장용)"
+
     # ---- 6. 서식선택_출력 ----
     $wsSel = $wbNew.Worksheets.Add()
     $wsSel.Name = "서식선택_출력"
@@ -322,6 +342,8 @@ try {
         @("F-049","만족도 설문조사 실시","사후평가"), @("F-050","만족도 조사 설문지","사후평가"),
         @("F-051","만족도 설문조사 결과","사후평가"), @("F-052","만족도 조사 설문 결과 서식","사후평가")
     )
+    # F-016은 시트·DB 구조만 이번에 추가함(저장·출력 연동 미완성). 완료 전까지는 $implemented에
+    # 넣지 않아 서식선택_출력에서 "N"(미구현)으로 남겨 잘못 선택되지 않게 함.
     $implemented = @{ "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-024" = "F-024_단가비율표" }
     $deferred = @{ "F-013" = "HWPX 우선순위 위임(표·이미지 복합조판)" }
 
@@ -684,6 +706,51 @@ try {
     $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 1.27; $ps.BottomMargin = CmToPt 1.27; $ps.LeftMargin = CmToPt 1.27; $ps.RightMargin = CmToPt 1.27; $ps.HeaderMargin = CmToPt 0.8; $ps.FooterMargin = CmToPt 0.8; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$B`$1:`$G`$26"
     L "F-015 원문 고정 배점표 대조 레이아웃 및 수식 적용 완료"
 
+    # ---- 7d. F-016 정성적 평가 ----
+    # 원본 HWPX [9-5]의 고정 4개 평가항목(재질/완성도/A·S/하자보상)·5단계 배점(탁월~불량)과
+    # 가점·감점 요인(담합 처분/만족도 조사)을 재현한다. 5단계는 담당자가 최종 점수만 직접 입력하는
+    # 방식으로 단순화하고(항목별 허용 범위로 검증), 가점·감점은 단일 입력칸(-15~+5)으로 처리한다.
+    # F-015와 동일하게 업체별 별도 쪽으로 출력하며, 평가 주체는 교복선정위원회임을 명시한다.
+    $wsF16 = $wbNew.Worksheets.Add()
+    $wsF16.Name = "F-016_정성적평가"
+    $ws = $wsF16
+    $ws.Range("A1").Value2 = "[검토중 — 담당자 최종 확인 후 사용] 원본 HWPX [9-5]의 고정 배점표를 대조하여 구성함"
+    $ws.Range("A1").Font.Size = 8; $ws.Range("A1").Font.Color = 255
+    $ws.Range("I2").Value2 = "선택 업체 순번(자동, 인쇄 전용)"; $ws.Range("I2").Font.Size = 7
+    $ws.Range("I3").Value2 = 1
+    $ws.Range("B3:F3").Merge() | Out-Null; $ws.Range("B3").Value2 = "[9-5] [붙임 3_2] [2단계] 정성적 평가"; $ws.Range("B3").Font.Size = 14; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108
+    $ws.Range("B4:F4").Merge() | Out-Null; $ws.Range("B4").Value2 = "[2단계] 정성적 평가(50점): 교복선정위원회에서 평가"; $ws.Range("B4").Font.Bold = $true; $ws.Range("B4").HorizontalAlignment = -4108
+    $ws.Range("B5").Value2 = "학교명"; $ws.Range("C5").Formula = '=IF(기초자료입력!C4<>"",기초자료입력!C4,"")'
+    $ws.Range("D5").Value2 = "학년도"; $ws.Range("E5").Formula = '=IF(기초자료입력!C5<>"",기초자료입력!C5,"")'
+    $ws.Range("F5").Value2 = "대상 업체"
+    $ws.Range("B6:F6").Merge() | Out-Null; $ws.Range("B6").Formula = '=IFERROR(INDEX(기초자료입력!$B$44:$B$53,I3),"")'; $ws.Range("B6").HorizontalAlignment = -4108
+    $ws.Range("B7:F7").Merge() | Out-Null; $ws.Range("B7").Value2 = "※ 평가항목은 학교별 상황에 따라 자율적으로 변경 적용 가능함"; $ws.Range("B7").WrapText = $true
+    $headersF16 = @("구분", "평가항목", "배점기준", "배점", "평가점수")
+    for ($i = 0; $i -lt $headersF16.Count; $i++) { $ws.Cells.Item(9, $i + 2).Value2 = $headersF16[$i] }
+    $ws.Range("B9:B13").Merge() | Out-Null; $ws.Range("B9").Value2 = "정성적 평가`n(50점)"; $ws.Range("B9").WrapText = $true
+    $ws.Range("C9").Value2 = "재질(15점)"; $ws.Range("D9").Value2 = "1. 옷감의 촉감과 질감의 상태(10)`n2. 섬유조직의 세밀함과 부드러움(10)`n탁월15·우수12·보통9·미흡6·불량3"; $ws.Range("E9").Value2 = 15
+    $ws.Range("F9").Formula = '=IFERROR(INDEX(기초자료입력!$H$44:$H$53,I3),"")'
+    $ws.Range("C10").Value2 = "완성도(10점)"; $ws.Range("D10").Value2 = "1. 바느질의 꼼꼼함`n2. 단추·지퍼의 견고함`n3. 마감처리의 완성도`n4. 여유단의 정도`n탁월10·우수8·보통6·미흡4·불량2"; $ws.Range("E10").Value2 = 10
+    $ws.Range("F10").Formula = '=IFERROR(INDEX(기초자료입력!$I$44:$I$53,I3),"")'
+    $ws.Range("C11").Value2 = "A/S(15점)"; $ws.Range("D11").Value2 = "1. 무상 A/S 의무기간`n2. A/S의 편의성(신속성)`n3. 출장 A/S 가능 여부`n4. A/S 내용(바느질·단추·지퍼 등)`n탁월15·우수12·보통9·미흡6·불량3"; $ws.Range("E11").Value2 = 15
+    $ws.Range("F11").Formula = '=IFERROR(INDEX(기초자료입력!$J$44:$J$53,I3),"")'
+    $ws.Range("C12").Value2 = "하자보상(10점)"; $ws.Range("D12").Value2 = "1. 제품하자에 대한 교환 등 하자 보상 및 소비자 불만 사항 처리 방안의 적정성`n탁월10·우수8·보통6·미흡4·불량2"; $ws.Range("E12").Value2 = 10
+    $ws.Range("F12").Formula = '=IFERROR(INDEX(기초자료입력!$K$44:$K$53,I3),"")'
+    $ws.Range("C13").Value2 = "가점 및 감점 요인"; $ws.Range("D13").Value2 = "· 최근 1년 공정거래위원회 담합 행정처분: -10`n· 최근 3년 교복 만족도 조사: 80점 이상 +5 / 75점 이상 +2 / 65점 이상 0 / 60점 이상 -2 / 55점 미만 -5"; $ws.Range("E13").Value2 = "-15~+5"
+    $ws.Range("F13").Formula = '=IFERROR(INDEX(기초자료입력!$L$44:$L$53,I3),"")'
+    $ws.Range("B14:C14").Merge() | Out-Null; $ws.Range("B14").Value2 = "합계"
+    $ws.Range("D14:E14").Merge() | Out-Null; $ws.Range("D14").Value2 = "50점 만점"
+    $ws.Range("F14").Formula = "=IF(OR(F9=`"`",F10=`"`",F11=`"`",F12=`"`",F13=`"`"),`"`",F9+F10+F11+F12+F13)"
+    $ws.Range("B16:F16").Merge() | Out-Null; $ws.Range("B16").Formula = '="본인은 "&IF(기초자료입력!C5<>"",기초자료입력!C5,"20○○")&"학년도 "&IF(기초자료입력!C4<>"",기초자료입력!C4,"○○○○학교")&" 교복 학교주관 교복 구매업체 선정을 위한 제시된 항목에 따라 객관적이고 공정하게 심사할 것을 약속합니다."'; $ws.Range("B16").WrapText = $true
+    $ws.Range("B17:F17").Merge() | Out-Null; $ws.Range("B17").Value2 = "20○○년    월    일"; $ws.Range("B17").HorizontalAlignment = -4108
+    $ws.Range("B18:F18").Merge() | Out-Null; $ws.Range("B18").Value2 = "○○학교 교복선정위원회 평가위원 (인 또는 서명)"; $ws.Range("B18").HorizontalAlignment = -4108
+    $ws.Range("B5:F5,B9:F14").Borders.LineStyle = 1; $ws.Range("B9:F9").Font.Bold = $true; $ws.Range("B9:F9").HorizontalAlignment = -4108; $ws.Range("B14:F14").Font.Bold = $true
+    $ws.Range("B9:F14").VerticalAlignment = -4108; $ws.Range("B9:C13,E9:F14").HorizontalAlignment = -4108; $ws.Range("D9:D13").WrapText = $true
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 12; $ws.Columns.Item("C").ColumnWidth = 14; $ws.Columns.Item("D").ColumnWidth = 34; $ws.Columns.Item("E").ColumnWidth = 8; $ws.Columns.Item("F").ColumnWidth = 8; $ws.Range("B3:F18").Font.Size = 9
+    $ws.Rows.Item(7).RowHeight = 24; for ($r = 9; $r -le 13; $r++) { $ws.Rows.Item($r).RowHeight = 45 }; $ws.Rows.Item(16).RowHeight = 30
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 1.27; $ps.BottomMargin = CmToPt 1.27; $ps.LeftMargin = CmToPt 1.27; $ps.RightMargin = CmToPt 1.27; $ps.HeaderMargin = CmToPt 0.8; $ps.FooterMargin = CmToPt 0.8; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$B`$1:`$F`$18"
+    L "F-016 원문 고정 배점표 대조 레이아웃 및 수식 적용 완료"
+
     # ---- 8. 학교정보 (원본 공개 데이터 표본 복사 — 학생·학부모 개인정보 아님) ----
     $wsSchool = $wbNew.Worksheets.Add()
     $wsSchool.Name = "학교정보"
@@ -821,10 +888,10 @@ try {
     # ---- 내부 DB 보호: 사용자 직접 편집을 막고, 매크로만 UserInterfaceOnly로 기록하게 한다. ----
     # 비밀번호를 지정하지 않으며, DB는 불러오기 순번 확인용으로 일반 숨김, 반복 DB는 VeryHidden 처리한다.
     $wsDB.Visible = 0  # xlSheetHidden
-    foreach ($internalSheet in @($wsDB, $wsItems, $wsVendors, $wsCommittee, $wsScore, $wsQuant)) {
+    foreach ($internalSheet in @($wsDB, $wsItems, $wsVendors, $wsCommittee, $wsScore, $wsQuant, $wsQual)) {
         $internalSheet.Protect("", $true, $true, $true, $true)
     }
-    foreach ($internalSheet in @($wsItems, $wsVendors, $wsCommittee, $wsScore, $wsQuant)) {
+    foreach ($internalSheet in @($wsItems, $wsVendors, $wsCommittee, $wsScore, $wsQuant, $wsQual)) {
         $internalSheet.Visible = 2  # xlSheetVeryHidden
     }
     L "DB 및 반복 DB 시트 보호 완료 (DB=숨김, 반복 DB=VeryHidden, UserInterfaceOnly 매크로 기록 허용, 비밀번호 없음)"
