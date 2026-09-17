@@ -93,9 +93,9 @@ try {
 
     # 4. 시트 목록
     L "시트 목록: $((@($wb.Worksheets) | ForEach-Object { $_.Name }) -join ', ')"
-    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', 'DB_업체', 'DB_위원', 'DB_평가', 'DB_정량평가', 'DB_정성평가', '서식선택_출력', 'F-007_구매요청기안문', 'F-014_평가항목배점기준', 'F-015_정량적평가', 'F-016_정성적평가', 'F-024_단가비율표', '학교정보', '학교검색', '절차안내', '계약방법안내')
+    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', 'DB_업체', 'DB_위원', 'DB_평가', 'DB_정량평가', 'DB_정성평가', '서식선택_출력', 'F-007_구매요청기안문', 'F-014_평가항목배점기준', 'F-015_정량적평가', 'F-016_정성적평가', 'F-017_제출서류자기확인서', 'F-024_단가비율표', '학교정보', '학교검색', '절차안내', '계약방법안내')
     $sheetNames = @($wb.Worksheets | ForEach-Object { $_.Name })
-    Assert-Check ($sheetNames.Count -eq 19 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) 'F-016을 포함한 필수 19개 시트가 모두 존재함'
+    Assert-Check ($sheetNames.Count -eq 20 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) 'F-017을 포함한 필수 20개 시트가 모두 존재함'
     $wsProtectedDB = $wb.Worksheets.Item('DB')
     $wsProtectedItems = $wb.Worksheets.Item('DB_품목')
     $wsProtectedVendors = $wb.Worksheets.Item('DB_업체')
@@ -121,7 +121,7 @@ try {
     Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B5').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B6').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B7').Value2) -and $wsMethod.Buttons('btn계약방법반영').OnAction -eq '계약방법안내_기초자료반영') '계약방법안내가 빈 확인값으로 시작하며 반영 버튼이 존재함'
 
     # 5. A4 1쪽 자연 충족 재확인 (F-007, F-014, F-024)
-    foreach ($sn in @("F-007_구매요청기안문","F-014_평가항목배점기준","F-015_정량적평가","F-016_정성적평가","F-024_단가비율표")) {
+    foreach ($sn in @("F-007_구매요청기안문","F-014_평가항목배점기준","F-015_정량적평가","F-016_정성적평가","F-017_제출서류자기확인서","F-024_단가비율표")) {
         $ws = $wb.Worksheets.Item($sn)
         $hb = $ws.HPageBreaks.Count
         $vb = $ws.VPageBreaks.Count
@@ -400,6 +400,11 @@ try {
     L "F-024 수량 합계(D15) 계산값: $($wsF24.Range('D15').Value2), 비율(E9/E10): $($wsF24.Range('E9').Value2)/$($wsF24.Range('E10').Value2)"
     Assert-Check ($wsF24.Range('D15').Value2 -eq 204 -and $wsF24.Range('E9').Text -eq '55.6%' -and $wsF24.Range('E10').Text -eq '44.4%') 'F-024 수량 합계와 단가비율이 입력값을 참조함'
     Assert-Check ($wsF24.Range('C9').Value2 -eq '동복 상의' -and $wsF24.Range('C10').Value2 -eq '동복 하의') 'F-024 품목명이 입력 반복행을 참조함'
+    $wsF17 = $wb.Worksheets.Item('F-017_제출서류자기확인서')
+    $wsF17.Range('G3').Value2 = 1
+    $excel.CalculateFullRebuild()
+    Assert-Check ($wsF17.Range('B8').Value2 -eq '검증업체가' -and [string]::IsNullOrWhiteSpace([string]$wsF17.Range('C8').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF17.Range('D8').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF17.Range('E8').Value2) -and $wsF17.Range('B10').Value2 -eq '제출서류') 'F-017은 업체명만 반영하고 대표자·연락처·대리인 정보는 빈 양식으로 유지함'
+    Assert-Check ([bool]$excel.Run('검증_F017출력가능')) 'F-017 선택 출력이 공통 필수값과 업체 반복행을 확인함'
     $longTitle = ('평가 기준 & 특수문자 <>()[]{} / ' * 4)
     $wsIn.Range('C4').Value2 = ('검증학교 & 특수문자 <>()[]{} ' * 3)
     $wsIn.Range('C22').Value2 = $longTitle
@@ -446,7 +451,7 @@ try {
     $lastRow = $wsSel.Cells.Item($wsSel.Rows.Count, 2).End(-4162).Row  # xlUp
     for ($r = 5; $r -le $lastRow; $r++) {
         $fid = $wsSel.Cells.Item($r, 2).Value2
-        if ($fid -eq "F-007" -or $fid -eq "F-014" -or $fid -eq "F-015" -or $fid -eq "F-016" -or $fid -eq "F-024") {
+        if ($fid -eq "F-007" -or $fid -eq "F-014" -or $fid -eq "F-015" -or $fid -eq "F-016" -or $fid -eq "F-017" -or $fid -eq "F-024") {
             $wsSel.Cells.Item($r, 1).Value2 = $true
         }
     }
@@ -462,6 +467,8 @@ try {
     Assert-Check ($leftoverF015TempSheets.Count -eq 0) 'F-015 업체별 임시 인쇄 시트가 PDF 저장 후 정리됨'
     $leftoverF016TempSheets = @($wb.Worksheets | Where-Object { $_.Name -like 'F016_임시_*' })
     Assert-Check ($leftoverF016TempSheets.Count -eq 0) 'F-016 업체별 임시 인쇄 시트가 PDF 저장 후 정리됨'
+    $leftoverF017TempSheets = @($wb.Worksheets | Where-Object { $_.Name -like 'F017_임시_*' })
+    Assert-Check ($leftoverF017TempSheets.Count -eq 0) 'F-017 업체별 임시 인쇄 시트가 PDF 저장 후 정리됨'
 
     $outputDir = Join-Path $validationDirectory 'output'
     if (Test-Path $outputDir) {
@@ -480,6 +487,8 @@ try {
 
     # 8. 매크로 실행 후 테스트값 원복(초기화) — 배포본에 테스트 데이터가 남지 않도록
     Invoke-ValidationMacro -macroName '검증_초기화'
+    $excel.CalculateFullRebuild()
+    Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsF17.Range('B8').Value2)) 'F-017 빈 배포본은 업체명 미선택 시 0 대신 빈 칸을 표시함'
     $wsDB2 = $wb.Worksheets.Item("DB")
     foreach ($internalSheet in @($wsDB2, $wb.Worksheets.Item('DB_품목'), $wb.Worksheets.Item('DB_업체'), $wb.Worksheets.Item('DB_위원'), $wb.Worksheets.Item('DB_평가'), $wb.Worksheets.Item('DB_정량평가'), $wb.Worksheets.Item('DB_정성평가'))) {
         $internalSheet.Unprotect("")

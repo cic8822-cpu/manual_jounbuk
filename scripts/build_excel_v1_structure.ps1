@@ -342,7 +342,7 @@ try {
         @("F-049","만족도 설문조사 실시","사후평가"), @("F-050","만족도 조사 설문지","사후평가"),
         @("F-051","만족도 설문조사 결과","사후평가"), @("F-052","만족도 조사 설문 결과 서식","사후평가")
     )
-    $implemented = @{ "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-016" = "F-016_정성적평가"; "F-024" = "F-024_단가비율표" }
+    $implemented = @{ "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-016" = "F-016_정성적평가"; "F-017" = "F-017_제출서류자기확인서"; "F-024" = "F-024_단가비율표" }
     $deferred = @{ "F-013" = "HWPX 우선순위 위임(표·이미지 복합조판)" }
 
     $row = 5
@@ -748,6 +748,54 @@ try {
     $ws.Rows.Item(7).RowHeight = 24; for ($r = 9; $r -le 13; $r++) { $ws.Rows.Item($r).RowHeight = 45 }; $ws.Rows.Item(16).RowHeight = 30
     $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 1.27; $ps.BottomMargin = CmToPt 1.27; $ps.LeftMargin = CmToPt 1.27; $ps.RightMargin = CmToPt 1.27; $ps.HeaderMargin = CmToPt 0.8; $ps.FooterMargin = CmToPt 0.8; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$B`$1:`$F`$18"
     L "F-016 원문 고정 배점표 대조 레이아웃 및 수식 적용 완료"
+
+    # ---- 7e. F-017 제출서류 자기확인서 ----
+    # 원본 HWPX [9-6]의 업체별 제출서류 확인표를 재현한다. 업체명만 기존 R-03에서
+    # 반영하며 대표자·연락처·대리인 정보는 개인정보 경계에 따라 빈 양식으로 둔다.
+    $wsF17 = $wbNew.Worksheets.Add()
+    $wsF17.Name = "F-017_제출서류자기확인서"
+    $ws = $wsF17
+    $ws.Range("A1").Value2 = "[검토중 — 담당자 최종 확인 후 사용] 원본 HWPX [9-6] 대조. 대표자·연락처·대리인 정보는 자동 반영하지 않음"
+    $ws.Range("A1").Font.Size = 8; $ws.Range("A1").Font.Color = 255
+    $ws.Range("G2").Value2 = "선택 업체 순번(자동, 인쇄 전용)"; $ws.Range("G2").Font.Size = 7
+    $ws.Range("G3").Value2 = 1
+    $ws.Range("B3:E3").Merge() | Out-Null; $ws.Range("B3").Formula = '=IF(기초자료입력!C5<>"",기초자료입력!C5,"20○○")&"년도 신입생 교복 제출서류 자기확인서"'; $ws.Range("B3").Font.Size = 14; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108
+    $ws.Range("B5:E5").Merge() | Out-Null; $ws.Range("B5").Value2 = "※ 업체명만 기초자료의 반복행에서 반영합니다. 대표자·연락처·대리인 정보는 제출자가 작성하는 빈 칸으로 유지합니다."; $ws.Range("B5").Font.Size = 8; $ws.Range("B5").WrapText = $true
+    $headersF17Vendor = @("업체명", "대표자", "연락처", "위임자(대리인 제출 시): 직위·이름·전화번호")
+    for ($i = 0; $i -lt $headersF17Vendor.Count; $i++) { $ws.Cells.Item(7, $i + 2).Value2 = $headersF17Vendor[$i] }
+    $ws.Range("B8").Formula = '=IFERROR(IF(INDEX(기초자료입력!$B$44:$B$53,$G$3)=0,"",INDEX(기초자료입력!$B$44:$B$53,$G$3)),"")'
+    $ws.Range("C8:E8").ClearContents()
+    $headersF17 = @("제출서류", "수량", "제출여부`n(○,✕)", "비고`n(서류 확인 사항)")
+    for ($i = 0; $i -lt $headersF17.Count; $i++) { $ws.Cells.Item(10, $i + 2).Value2 = $headersF17[$i] }
+    $documentsF17 = @(
+        @("정량적 평가 자기 평점표[서식 1_1]", "1부", ""),
+        @("입찰참가 신청서[서식 2]", "1부", ""),
+        @("입찰 참가 신고서[서식 3]", "1부", ""),
+        @("위임장[서식 10]", "1부", "대리인 재직증명서, 4대보험 가입증명서"),
+        @("서약서[서식 11]", "1부", ""),
+        @("개인정보제공 동의서[서식 12]", "1부", ""),
+        @("청렴계약 이행서약서[서식 13]", "1부", ""),
+        @("사업자등록증 사본", "1부", ""),
+        @("중소기업확인서", "1부", ""),
+        @("공정거래위원회 법위반사실확인서", "1부", ""),
+        @("교복 납품 실적 증명서", "1부", ""),
+        @("기타 평가기준에 따른 증명서류", "1부", "제안평가 반영 시 제출"),
+        @("교복(동복·하복) 납품 제안서[서식 4]", "원본 1부, 사본 ○부", "사본 블라인드 처리"),
+        @("교복 납품 실적표[서식 5]", "원본 1부, 사본 ○부", "사본 블라인드 처리"),
+        @("교복 제조 사양서[서식 6]", "원본 1부, 사본 ○부", "사본 블라인드 처리"),
+        @("품목별 단가 비율표[서식 7]", "원본 1부, 사본 ○부", "사본 블라인드 처리"),
+        @("교복 A/S 계획서[서식 8]", "원본 1부, 사본 ○부", "사본 블라인드 처리"),
+        @("소비자 불만 사항에 대한 처리방안[서식 9]", "원본 1부, 사본 ○부", "사본 블라인드 처리"),
+        @("교복 제조 및 판매 시설 현황서", "원본 1부, 사본 ○부", "사본 블라인드 처리"),
+        @("교복 샘플", "샘플 1부", "블라인드 처리")
+    )
+    for ($i = 0; $i -lt $documentsF17.Count; $i++) { $r = 11 + $i; $ws.Cells.Item($r, 2).Value2 = $documentsF17[$i][0]; $ws.Cells.Item($r, 3).Value2 = $documentsF17[$i][1]; $ws.Cells.Item($r, 4).Value2 = ""; $ws.Cells.Item($r, 5).Value2 = $documentsF17[$i][2] }
+    $ws.Range("B7:E8,B10:E30").Borders.LineStyle = 1; $ws.Range("B7:E7,B10:E10").Font.Bold = $true; $ws.Range("B7:E7,B10:E10").HorizontalAlignment = -4108
+    $ws.Range("B7:E30").VerticalAlignment = -4108; $ws.Range("C7:D30").HorizontalAlignment = -4108; $ws.Range("B7:E10").WrapText = $true; $ws.Range("B11:E30").WrapText = $false; $ws.Range("B11:E30").ShrinkToFit = $true
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 24; $ws.Columns.Item("C").ColumnWidth = 10; $ws.Columns.Item("D").ColumnWidth = 10; $ws.Columns.Item("E").ColumnWidth = 25; $ws.Range("B3:E30").Font.Size = 8
+    $ws.Rows.Item(5).RowHeight = 20; $ws.Rows.Item(7).RowHeight = 24; $ws.Rows.Item(8).RowHeight = 20; $ws.Rows.Item(10).RowHeight = 24; for ($r = 11; $r -le 30; $r++) { $ws.Rows.Item($r).RowHeight = 16 }; $ws.Rows.Item(22).RowHeight = 24
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 0.8; $ps.BottomMargin = CmToPt 0.8; $ps.LeftMargin = CmToPt 1.0; $ps.RightMargin = CmToPt 1.0; $ps.HeaderMargin = CmToPt 0.5; $ps.FooterMargin = CmToPt 0.5; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$B`$1:`$E`$30"
+    L "F-017 원문 제출서류 표 대조 레이아웃 및 개인정보 빈칸 경계 적용 완료"
 
     # ---- 8. 학교정보 (원본 공개 데이터 표본 복사 — 학생·학부모 개인정보 아님) ----
     $wsSchool = $wbNew.Worksheets.Add()
