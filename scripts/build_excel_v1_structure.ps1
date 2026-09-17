@@ -362,7 +362,7 @@ try {
         @("F-049","만족도 설문조사 실시","사후평가"), @("F-050","만족도 조사 설문지","사후평가"),
         @("F-051","만족도 설문조사 결과","사후평가"), @("F-052","만족도 조사 설문 결과 서식","사후평가")
     )
-    $implemented = @{ "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-016" = "F-016_정성적평가"; "F-017" = "F-017_제출서류자기확인서"; "F-018" = "F-018_정량적평가자기평점표"; "F-024" = "F-024_단가비율표" }
+    $implemented = @{ "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-016" = "F-016_정성적평가"; "F-017" = "F-017_제출서류자기확인서"; "F-018" = "F-018_정량적평가자기평점표"; "F-019" = "F-019_입찰참가신청서"; "F-020" = "F-020_입찰참가신고서"; "F-024" = "F-024_단가비율표" }
     $deferred = @{ "F-013" = "HWPX 우선순위 위임(표·이미지 복합조판)" }
 
     $row = 5
@@ -847,6 +847,64 @@ try {
     $ws.Rows.Item(4).RowHeight = 28; for ($r = 8; $r -le 20; $r++) { $ws.Rows.Item($r).RowHeight = 22 }; $ws.Rows.Item(23).RowHeight = 28
     $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 1.27; $ps.BottomMargin = CmToPt 1.27; $ps.LeftMargin = CmToPt 1.27; $ps.RightMargin = CmToPt 1.27; $ps.HeaderMargin = CmToPt 0.8; $ps.FooterMargin = CmToPt 0.8; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$B`$1:`$F`$25"
     L "F-018 원문 고정 배점표 대조 레이아웃 및 학교평가 분리 경계 적용 완료"
+
+    # ---- 7g. F-019 입찰참가신청서 ----
+    # 원문 HWPX [9-7] [서식 2]를 대조한다. 업체명·학교 공통정보만 반영하고 법인번호·주소·전화·주민번호·대리인·인감은 빈칸으로 보존한다.
+    $wsF19 = $wbNew.Worksheets.Add()
+    $wsF19.Name = "F-019_입찰참가신청서"
+    $ws = $wsF19
+    $ws.Range("A1").Value2 = "[검토중 — 담당자 최종 확인 후 사용] 원본 HWPX [9-7] [서식 2] 대조. 민감정보와 날인란은 자동 반영하지 않습니다."
+    $ws.Range("A1").Font.Size = 8; $ws.Range("A1").Font.Color = 255
+    $ws.Range("N2").Value2 = "선택 업체 순번(자동, 인쇄 전용)"; $ws.Range("N2").Font.Size = 7; $ws.Range("N3").Value2 = 1
+    $ws.Range("B3:J4").Merge() | Out-Null; $ws.Range("B3").Value2 = "입 찰 참 가 신 청 서`n※ 아래 사항 중 해당되는 경우에만 기재하시기 바랍니다."; $ws.Range("B3").Font.Size = 14; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108; $ws.Range("B3").VerticalAlignment = -4108; $ws.Range("B3").WrapText = $true
+    $ws.Range("K3:L4").Merge() | Out-Null; $ws.Range("K3").Value2 = "처리기간`n즉 시"; $ws.Range("K3").HorizontalAlignment = -4108; $ws.Range("K3").VerticalAlignment = -4108; $ws.Range("K3").WrapText = $true
+    $ws.Range("B6:C8").Merge() | Out-Null; $ws.Range("B6").Value2 = "신`n청`n인"; $ws.Range("B6").HorizontalAlignment = -4108; $ws.Range("B6").VerticalAlignment = -4108
+    $ws.Range("D6:E6").Merge() | Out-Null; $ws.Range("D6").Value2 = "상호 또는`n법인명칭"; $ws.Range("F6:H6").Merge() | Out-Null; $ws.Range("F6").Formula = '=IFERROR(IF(INDEX(기초자료입력!$B$44:$B$53,$N$3)=0,"",INDEX(기초자료입력!$B$44:$B$53,$N$3)),"")'; $ws.Range("I6").Value2 = "법인등록번호"; $ws.Range("J6:L6").Merge() | Out-Null
+    $ws.Range("D7:E7").Merge() | Out-Null; $ws.Range("D7").Value2 = "주 소"; $ws.Range("F7:H7").Merge() | Out-Null; $ws.Range("I7").Value2 = "전화번호"; $ws.Range("J7:L7").Merge() | Out-Null
+    $ws.Range("D8:E8").Merge() | Out-Null; $ws.Range("D8").Value2 = "대표자"; $ws.Range("F8:H8").Merge() | Out-Null; $ws.Range("I8").Value2 = "주민등록번호"; $ws.Range("J8:L8").Merge() | Out-Null
+    $ws.Range("B10:C11").Merge() | Out-Null; $ws.Range("B10").Value2 = "입찰`n개요"; $ws.Range("B10").HorizontalAlignment = -4108; $ws.Range("B10").VerticalAlignment = -4108
+    $ws.Range("D10:E10").Merge() | Out-Null; $ws.Range("D10").Value2 = "입찰공고`n(지명)번호"; $ws.Range("F10:H10").Merge() | Out-Null; $ws.Range("F10").Formula = '=IF(기초자료입력!$C$4="","",기초자료입력!$C$4&" 공고 제20○○-00호")'; $ws.Range("I10").Value2 = "입찰일자"; $ws.Range("J10:L10").Merge() | Out-Null
+    $ws.Range("D11:E11").Merge() | Out-Null; $ws.Range("D11").Value2 = "입찰건명"; $ws.Range("F11:L11").Merge() | Out-Null; $ws.Range("F11").Formula = '=IF(OR(기초자료입력!$C$4="",기초자료입력!$C$5=""),"",기초자료입력!$C$4&" "&기초자료입력!$C$5&"학년도 교복 학교주관 구매 입찰")'
+    $ws.Range("B13:C13").Merge() | Out-Null; $ws.Range("B13").Value2 = "입찰보증금"; $ws.Range("D13:L13").Merge() | Out-Null; $ws.Range("D13").Value2 = "귀 교에서 시행하는 위 건명에 대해 입찰보증금 납부를 면제받고자 하며, 낙찰자 결정 통지를 받은 후 10일 이내에 계약을 체결하지 않을 시 입찰금액의 5/100에 해당하는 입찰보증금을 납부할 것을 확약합니다."; $ws.Range("D13").WrapText = $true
+    $ws.Range("B15:C18").Merge() | Out-Null; $ws.Range("B15").Value2 = "대리인·`n사용인감"; $ws.Range("B15").HorizontalAlignment = -4108; $ws.Range("B15").VerticalAlignment = -4108
+    $ws.Range("D15:H18").Merge() | Out-Null; $ws.Range("D15").Value2 = "본 입찰에 관한 일체의 권한을 다음의 자에게 위임합니다.`n성 명 :`n주민등록번호 :"; $ws.Range("D15").WrapText = $true
+    $ws.Range("I15:L18").Merge() | Out-Null; $ws.Range("I15").Value2 = "본 입찰에 사용할 인감을 다음과 같이 신고합니다.`n`n`n(사용인감 날인)"; $ws.Range("I15").WrapText = $true
+    $ws.Range("B20:L20").Merge() | Out-Null; $ws.Range("B20").Formula = '="본인은 위의 번호로 공고한 "&IF(기초자료입력!$C$4="","○○○○학교",기초자료입력!$C$4)&"의 2단계 입찰(규격·가격 동시 입찰)에 참가하고자 지방자치단체 입찰 및 계약집행기준 제8장 입찰유의서, 제9장 계약일반조건 및 입찰공고 사항을 모두 승낙하고 별첨 서류를 첨부하여 입찰 참가 신청을 합니다."'; $ws.Range("B20").WrapText = $true
+    $ws.Range("B21:L21").Merge() | Out-Null; $ws.Range("B21").Value2 = "붙임서류 : 공고에 정한 서류"
+    $ws.Range("B23:L23").Merge() | Out-Null; $ws.Range("B23").Formula = '=IF(OR(기초자료입력!$C$4="",기초자료입력!$C$5=""),"","20"&RIGHT(기초자료입력!$C$5,2)&". . .")'
+    $ws.Range("B24:L24").Merge() | Out-Null; $ws.Range("B24").Formula = '="업체명: "&IFERROR(IF(INDEX(기초자료입력!$B$44:$B$53,$N$3)=0,"",INDEX(기초자료입력!$B$44:$B$53,$N$3)),"")&"                 대표자:                         (인)"'
+    $ws.Range("B25:L25").Merge() | Out-Null; $ws.Range("B25").Formula = '=IF(기초자료입력!$C$4="","○○○○학교장 귀하",기초자료입력!$C$4&"장 귀하")'
+    $ws.Range("B3:L4,B6:L8,B10:L11,B13:L13,B15:L18").Borders.LineStyle = 1; $ws.Range("B3:L25").VerticalAlignment = -4108; $ws.Range("B6:L18").HorizontalAlignment = -4108
+    $ws.Columns.Item("A").ColumnWidth = 2; $ws.Columns.Item("B").ColumnWidth = 5; $ws.Columns.Item("C").ColumnWidth = 5; $ws.Columns.Item("D").ColumnWidth = 8; $ws.Columns.Item("E").ColumnWidth = 8; $ws.Columns.Item("F").ColumnWidth = 10; $ws.Columns.Item("G").ColumnWidth = 10; $ws.Columns.Item("H").ColumnWidth = 8; $ws.Columns.Item("I").ColumnWidth = 9; $ws.Columns.Item("J").ColumnWidth = 8; $ws.Columns.Item("K").ColumnWidth = 8; $ws.Columns.Item("L").ColumnWidth = 8; $ws.Range("B3:L25").Font.Size = 9
+    $ws.Rows.Item(1).RowHeight = 10; $ws.Rows.Item(2).RowHeight = 10; $ws.Rows.Item(3).RowHeight = 30; $ws.Rows.Item(4).RowHeight = 24; for ($r = 6; $r -le 11; $r++) { $ws.Rows.Item($r).RowHeight = 23 }; $ws.Rows.Item(13).RowHeight = 40; for ($r = 15; $r -le 18; $r++) { $ws.Rows.Item($r).RowHeight = 22 }; $ws.Rows.Item(20).RowHeight = 42
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 2; $ps.TopMargin = CmToPt 0.8; $ps.BottomMargin = CmToPt 0.8; $ps.LeftMargin = CmToPt 0.8; $ps.RightMargin = CmToPt 0.8; $ps.HeaderMargin = CmToPt 0.5; $ps.FooterMargin = CmToPt 0.5; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$B`$1:`$L`$25"
+    L "F-019 원문 입찰참가신청서 표 대조 레이아웃 및 개인정보 빈칸 경계 적용 완료"
+
+    # ---- 7h. F-020 입찰 참가 신고서 ----
+    # 원문 HWPX [9-8] [서식 3]을 대조한다. 사업자 상호(R-03)만 반영하고 사업자 번호·대표자 성명·직인은 빈칸으로 보존한다.
+    $wsF20 = $wbNew.Worksheets.Add()
+    $wsF20.Name = "F-020_입찰참가신고서"
+    $ws = $wsF20
+    $ws.Range("A1").Value2 = "[검토중 — 담당자 최종 확인 후 사용] 원본 HWPX [9-8] [서식 3] 대조. 사업자 번호·대표자 성명·직인은 자동 반영하지 않습니다."
+    $ws.Range("A1").Font.Size = 8; $ws.Range("A1").Font.Color = 255
+    $ws.Range("G2").Value2 = "선택 업체 순번(자동, 인쇄 전용)"; $ws.Range("G2").Font.Size = 7; $ws.Range("G3").Value2 = 1
+    $ws.Range("B3:E4").Merge() | Out-Null; $ws.Range("B3").Value2 = "교복 학교주관구매 입찰 참가 신고서"; $ws.Range("B3").Font.Size = 14; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108; $ws.Range("B3").VerticalAlignment = -4108
+    $ws.Range("B5:E5").Merge() | Out-Null; $ws.Range("B5").Value2 = "※ 사업자 상호(업체명)만 기초자료의 반복행에서 반영합니다. 사업자 번호·대표자 성명·직인은 사업자가 직접 작성하는 빈 칸으로 유지합니다."; $ws.Range("B5").Font.Size = 8; $ws.Range("B5").WrapText = $true
+    $ws.Range("B7").Value2 = "사업자 상호"; $ws.Range("B7").Font.Bold = $true; $ws.Range("C7:E7").Merge() | Out-Null; $ws.Range("C7").Formula = '=IFERROR(IF(INDEX(기초자료입력!$B$44:$B$53,$G$3)=0,"",INDEX(기초자료입력!$B$44:$B$53,$G$3)),"")'
+    $ws.Range("B8").Value2 = "사업자 번호"; $ws.Range("B8").Font.Bold = $true; $ws.Range("C8:E8").Merge() | Out-Null
+    $ws.Range("B9").Value2 = "사업자 대표"; $ws.Range("B9").Font.Bold = $true; $ws.Range("C9:E9").Merge() | Out-Null
+    $lq = [char]0x2018; $rq = [char]0x2019  # PowerShell 5.1은 한글 문서의 둥근 작은따옴표(U+2018/U+2019)를 문자열 구분자로 오인하므로 문자코드로 조립함
+    $ws.Range("B11:E13").Merge() | Out-Null; $ws.Range("B11").Formula = '="위 사업자는 전북특별자치도교육청의 교복 가격 안정화를 위한 교복 ' + $lq + '학교주관구매' + $rq + ' 실시에 따라, "&IF(기초자료입력!$C$4="","○○○○학교",기초자료입력!$C$4)&"(주소지 전북 )가 시행하는 교복 ' + $lq + '학교주관구매' + $rq + '가 원만히 추진될 수 있도록 20○○.00.00. 일자로 공고한 입찰에 참가하기에 신고합니다."'; $ws.Range("B11").WrapText = $true
+    $ws.Range("B15:E16").Merge() | Out-Null; $ws.Range("B15").Value2 = "※ 위 신고 사업자는 해당 학교의 " + $lq + "학교주관구매" + $rq + "를 저해하는 행위를 하는 경우, 향후 입찰에서 제외되는 등 불이익을 받을 수 있음을 확인하였습니다."; $ws.Range("B15").WrapText = $true
+    $ws.Range("B18:E18").Merge() | Out-Null; $ws.Range("B18").Formula = '=IF(기초자료입력!$C$5="","20○○. ○○. ○○","20"&RIGHT(기초자료입력!$C$5,2)&". ○○. ○○")'; $ws.Range("B18").HorizontalAlignment = -4108
+    $ws.Range("B19:E19").Merge() | Out-Null; $ws.Range("B19").Value2 = "위 신고인 사업자 대표 성명 ○○○ 사업자 직인"; $ws.Range("B19").HorizontalAlignment = -4108
+    $ws.Range("B20:E20").Merge() | Out-Null; $ws.Range("B20").Formula = '=IF(기초자료입력!$C$4="","○○○○학교장 귀하",기초자료입력!$C$4&"장 귀하")'; $ws.Range("B20").HorizontalAlignment = -4108
+    $ws.Range("B3:E5,B7:E9,B11:E13,B15:E16,B18:E20").Borders.LineStyle = 1
+    $ws.Range("B7:E9").VerticalAlignment = -4108; $ws.Range("B11:E16").VerticalAlignment = -4108
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 24; $ws.Columns.Item("C").ColumnWidth = 10; $ws.Columns.Item("D").ColumnWidth = 10; $ws.Columns.Item("E").ColumnWidth = 25; $ws.Range("B3:E20").Font.Size = 10
+    $ws.Rows.Item(1).RowHeight = 10; $ws.Rows.Item(2).RowHeight = 10; $ws.Rows.Item(3).RowHeight = 22; $ws.Rows.Item(4).RowHeight = 22; $ws.Rows.Item(5).RowHeight = 28; $ws.Rows.Item(6).RowHeight = 8; $ws.Rows.Item(7).RowHeight = 20; $ws.Rows.Item(8).RowHeight = 20; $ws.Rows.Item(9).RowHeight = 20; $ws.Rows.Item(10).RowHeight = 8; $ws.Rows.Item(11).RowHeight = 18; $ws.Rows.Item(12).RowHeight = 18; $ws.Rows.Item(13).RowHeight = 18; $ws.Rows.Item(14).RowHeight = 8; $ws.Rows.Item(15).RowHeight = 22; $ws.Rows.Item(16).RowHeight = 22; $ws.Rows.Item(17).RowHeight = 8; $ws.Rows.Item(18).RowHeight = 20; $ws.Rows.Item(19).RowHeight = 20; $ws.Rows.Item(20).RowHeight = 20
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 0.8; $ps.BottomMargin = CmToPt 0.8; $ps.LeftMargin = CmToPt 1.0; $ps.RightMargin = CmToPt 1.0; $ps.HeaderMargin = CmToPt 0.5; $ps.FooterMargin = CmToPt 0.5; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$B`$1:`$E`$20"
+    L "F-020 원문 입찰 참가 신고서 대조 레이아웃 및 개인정보 빈칸 경계 적용 완료"
 
     # ---- 8. 학교정보 (원본 공개 데이터 표본 복사 — 학생·학부모 개인정보 아님) ----
     $wsSchool = $wbNew.Worksheets.Add()
