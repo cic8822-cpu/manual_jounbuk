@@ -155,7 +155,7 @@ try {
     $ws.Range("E39").NumberFormat = "#,##0"
     $ws.Range("E39").Font.Bold = $true
 
-    $ws.Range("B42").Value2 = "5. 업체 반복행 (R-03 업체명) — 입찰·평가·계약 문서의 공통 후보 목록. C~F열은 F-015 정량평가, H~L열은 F-016 정성평가 점수"
+    $ws.Range("B42").Value2 = "5. 업체 반복행 (R-03 업체명) — C~F열은 F-015 학교 정량평가, H~L열은 F-016 학교 정성평가, N~Q열은 F-018 업체 자기평점이며 서로 혼용하지 않음"
     $ws.Range("B42").Font.Bold = $true
     $ws.Range("B43").Value2 = "업체명"
     $ws.Range("C43").Value2 = "수행경험(10)"
@@ -169,7 +169,12 @@ try {
     $ws.Range("K43").Value2 = "하자보상(10)"
     $ws.Range("L43").Value2 = "가감점(-15~5)"
     $ws.Range("M43").Value2 = "F-016 상태"
-    $ws.Range("B43:M43").Font.Bold = $true
+    $ws.Range("N43").Value2 = "자기 수행경험(10)"
+    $ws.Range("O43").Value2 = "자기 공인인증(10)"
+    $ws.Range("P43").Value2 = "자기 거리(15)"
+    $ws.Range("Q43").Value2 = "자기 상한가격(15)"
+    $ws.Range("R43").Value2 = "F-018 상태"
+    $ws.Range("B43:R43").Font.Bold = $true
     for ($i = 0; $i -lt 10; $i++) {
         $r = 44 + $i
         $ws.Range("B$r:F$r").Interior.Color = 16777164
@@ -178,6 +183,9 @@ try {
         $ws.Range("H$r:L$r").Interior.Color = 16777164
         $ws.Range("H$r:L$r").NumberFormat = "0"
         $ws.Range("M$r").Formula = "=IF(B$r=`"`",`"`",IF(AND(ISNUMBER(H$r),ISNUMBER(I$r),ISNUMBER(J$r),ISNUMBER(K$r),ISNUMBER(L$r),H$r>=0,H$r<=15,I$r>=0,I$r<=10,J$r>=0,J$r<=15,K$r>=0,K$r<=10,L$r>=-15,L$r<=5),`"정상`",`"점수 확인`"))"
+        $ws.Range("N$r:Q$r").Interior.Color = 16777164
+        $ws.Range("N$r:Q$r").NumberFormat = "0"
+        $ws.Range("R$r").Formula = "=IF(B$r=`"`",`"`",IF(AND(ISNUMBER(N$r),ISNUMBER(O$r),ISNUMBER(P$r),ISNUMBER(Q$r),N$r>=0,N$r<=10,O$r>=0,O$r<=10,P$r>=0,P$r<=15,Q$r>=0,Q$r<=15),`"정상`",`"점수 확인`"))"
     }
 
     # R-01/R-02: 위원 역할과 마스킹 식별표시만 저장한다. 실제 성명·연락처·서명은 입력·저장하지 않는다.
@@ -217,6 +225,7 @@ try {
     $ws.Columns.Item("D").ColumnWidth = 14
     $ws.Columns.Item("E").ColumnWidth = 16
     $ws.Columns.Item("F").ColumnWidth = 16
+    $ws.Columns.Item("N").ColumnWidth = 16; $ws.Columns.Item("O").ColumnWidth = 16; $ws.Columns.Item("P").ColumnWidth = 15; $ws.Columns.Item("Q").ColumnWidth = 17; $ws.Columns.Item("R").ColumnWidth = 13
     $ws.Range("C4:C9,C12:C18,C21:C25,B29:D38").Interior.Color = 16777164  # 연노랑 입력영역 표시
     L "기초자료입력 시트 작성 완료"
 
@@ -298,6 +307,17 @@ try {
     $wsQual.Rows.Item(1).AutoFilter() | Out-Null
     L "DB_정성평가 시트 작성 완료 (F-016 업체별 정성평가 점수 저장용)"
 
+    # ---- 5f. DB_자기평점 (F-018 업체 자기평점, 학교 평가 DB와 분리) ----
+    $wsSelf = $wbNew.Worksheets.Add()
+    $wsSelf.Name = "DB_자기평점"
+    $selfHeaders = @("레코드순번", "행번호", "수행경험자기점수", "공인인증자기점수", "거리적접근성자기점수", "상한가격자기점수")
+    for ($i = 0; $i -lt $selfHeaders.Count; $i++) {
+        $wsSelf.Cells.Item(1, $i + 1).Value2 = $selfHeaders[$i]
+        $wsSelf.Cells.Item(1, $i + 1).Font.Bold = $true
+    }
+    $wsSelf.Rows.Item(1).AutoFilter() | Out-Null
+    L "DB_자기평점 시트 작성 완료 (F-018 업체 자기평점 저장용, 학교 평가와 분리)"
+
     # ---- 6. 서식선택_출력 ----
     $wsSel = $wbNew.Worksheets.Add()
     $wsSel.Name = "서식선택_출력"
@@ -342,7 +362,7 @@ try {
         @("F-049","만족도 설문조사 실시","사후평가"), @("F-050","만족도 조사 설문지","사후평가"),
         @("F-051","만족도 설문조사 결과","사후평가"), @("F-052","만족도 조사 설문 결과 서식","사후평가")
     )
-    $implemented = @{ "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-016" = "F-016_정성적평가"; "F-017" = "F-017_제출서류자기확인서"; "F-024" = "F-024_단가비율표" }
+    $implemented = @{ "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-016" = "F-016_정성적평가"; "F-017" = "F-017_제출서류자기확인서"; "F-018" = "F-018_정량적평가자기평점표"; "F-024" = "F-024_단가비율표" }
     $deferred = @{ "F-013" = "HWPX 우선순위 위임(표·이미지 복합조판)" }
 
     $row = 5
@@ -797,6 +817,37 @@ try {
     $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 0.8; $ps.BottomMargin = CmToPt 0.8; $ps.LeftMargin = CmToPt 1.0; $ps.RightMargin = CmToPt 1.0; $ps.HeaderMargin = CmToPt 0.5; $ps.FooterMargin = CmToPt 0.5; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$B`$1:`$E`$30"
     L "F-017 원문 제출서류 표 대조 레이아웃 및 개인정보 빈칸 경계 적용 완료"
 
+    # ---- 7f. F-018 정량적 평가 자기 평점표 ----
+    # 원본 HWPX [9-7]의 4개 정량 항목과 배점표를 재현한다. 학교의 F-015 평가는 참조하지 않고,
+    # 업체가 입력한 N:Q 자기평점만 표시한다. 작성자·대표자·서명은 자동 반영하지 않는다.
+    $wsF18 = $wbNew.Worksheets.Add()
+    $wsF18.Name = "F-018_정량적평가자기평점표"
+    $ws = $wsF18
+    $ws.Range("A1").Value2 = "[검토중 — 담당자 최종 확인 후 사용] 원본 HWPX [9-7] 대조. F-015 학교평가와 분리된 업체 자기평점이며 작성자·대표자·서명은 자동 반영하지 않음"
+    $ws.Range("A1").Font.Size = 8; $ws.Range("A1").Font.Color = 255
+    $ws.Range("I2").Value2 = "선택 업체 순번(자동, 인쇄 전용)"; $ws.Range("I2").Font.Size = 7
+    $ws.Range("I3").Value2 = 1
+    $ws.Range("B3:F3").Merge() | Out-Null; $ws.Range("B3").Value2 = "[9-7] [서식 1_1] 정량적 평가 자기 평점표"; $ws.Range("B3").Font.Size = 14; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108
+    $ws.Range("B4:F4").Merge() | Out-Null; $ws.Range("B4").Value2 = "※ 업체 자기평점표입니다. 학교의 F-015 정량적 평가 점수와 별도로 입력·보관하며, 사실관계와 증빙은 제출자가 최종 확인합니다."; $ws.Range("B4").WrapText = $true
+    $ws.Range("B5").Value2 = "업체명"; $ws.Range("C5:F5").Merge() | Out-Null; $ws.Range("C5").Formula = '=IFERROR(IF(INDEX(기초자료입력!$B$44:$B$53,$I$3)=0,"",INDEX(기초자료입력!$B$44:$B$53,$I$3)),"")'
+    $headersF18 = @("구분", "평가항목", "배점기준", "배점", "자기 평점")
+    for ($i = 0; $i -lt $headersF18.Count; $i++) { $ws.Cells.Item(7, $i + 2).Value2 = $headersF18[$i] }
+    $ws.Range("B8:B20").Merge() | Out-Null; $ws.Range("B8").Value2 = "정량적 평가`n(50점)"; $ws.Range("B8").WrapText = $true
+    $ws.Range("C8:C11").Merge() | Out-Null; $ws.Range("C8").Value2 = "1. 수행경험 (10)`n최근 3년간 학교 주관구매 교복 납품실적"; $ws.Range("D8").Value2 = "5건 이상"; $ws.Range("E8").Value2 = 10; $ws.Range("D9").Value2 = "3건 이상"; $ws.Range("E9").Value2 = 8; $ws.Range("D10").Value2 = "1건 이상 또는 신규업체"; $ws.Range("E10").Value2 = 6; $ws.Range("D11").Value2 = "실적없음"; $ws.Range("E11").Value2 = 4; $ws.Range("F8:F11").Merge() | Out-Null; $ws.Range("F8").Formula = '=IFERROR(IF(INDEX(기초자료입력!$B$44:$B$53,$I$3)=0,"",INDEX(기초자료입력!$N$44:$N$53,$I$3)),"")'
+    $ws.Range("C12:C14").Merge() | Out-Null; $ws.Range("C12").Value2 = "2. 공인인증(시험)기관의 품질인증 여부(10)"; $ws.Range("D12").Value2 = "교복 전품목 인증"; $ws.Range("E12").Value2 = 10; $ws.Range("D13").Value2 = "일부 품목 인증"; $ws.Range("E13").Value2 = 8; $ws.Range("D14").Value2 = "전품목 미인증"; $ws.Range("E14").Value2 = 5; $ws.Range("F12:F14").Merge() | Out-Null; $ws.Range("F12").Formula = '=IFERROR(IF(INDEX(기초자료입력!$B$44:$B$53,$I$3)=0,"",INDEX(기초자료입력!$O$44:$O$53,$I$3)),"")'
+    $ws.Range("C15:C18").Merge() | Out-Null; $ws.Range("C15").Value2 = "3. 거리적 접근성(15)`n학교와 교복업체(매장)와의 거리"; $ws.Range("D15").Value2 = "이동거리 5km 이내"; $ws.Range("E15").Value2 = 15; $ws.Range("D16").Value2 = "5km 이상~10km 미만"; $ws.Range("E16").Value2 = 12; $ws.Range("D17").Value2 = "10km 이상~15km 미만"; $ws.Range("E17").Value2 = 9; $ws.Range("D18").Value2 = "15km 이상"; $ws.Range("E18").Value2 = 5; $ws.Range("F15:F18").Merge() | Out-Null; $ws.Range("F15").Formula = '=IFERROR(IF(INDEX(기초자료입력!$B$44:$B$53,$I$3)=0,"",INDEX(기초자료입력!$P$44:$P$53,$I$3)),"")'
+    $ws.Range("C19:C20").Merge() | Out-Null; $ws.Range("C19").Value2 = "4. 품목별 상한가격(15)"; $ws.Range("D19").Value2 = "전품목 상한가격 기준 충족"; $ws.Range("E19").Value2 = 15; $ws.Range("D20").Value2 = "기준 미충족 품목이 있을 시"; $ws.Range("E20").Value2 = 0; $ws.Range("F19:F20").Merge() | Out-Null; $ws.Range("F19").Formula = '=IFERROR(IF(INDEX(기초자료입력!$B$44:$B$53,$I$3)=0,"",INDEX(기초자료입력!$Q$44:$Q$53,$I$3)),"")'
+    $ws.Range("B21:C21").Merge() | Out-Null; $ws.Range("B21").Value2 = "합계"; $ws.Range("D21:E21").Merge() | Out-Null; $ws.Range("D21").Value2 = "50점 만점"; $ws.Range("F21").Formula = '=IF(OR(F8="",F12="",F15="",F19=""),"",F8+F12+F15+F19)'
+    $ws.Range("B23:F23").Merge() | Out-Null; $ws.Range("B23").Value2 = "업체명은 기초자료의 업체 반복행에서만 반영합니다. 작성자·대표자·서명은 제출자가 직접 작성하는 빈 칸으로 유지합니다."; $ws.Range("B23").WrapText = $true
+    $ws.Range("B25:F25").Merge() | Out-Null; $ws.Range("B25").Formula = '="업체명: "&IFERROR(IF(INDEX(기초자료입력!$B$44:$B$53,$I$3)=0,"",INDEX(기초자료입력!$B$44:$B$53,$I$3)),"")&"     작성자:                         대표자:                         (인)"'
+    $ws.Range("B5:F5,B7:F21").Borders.LineStyle = 1; $ws.Range("B7:F7").Font.Bold = $true; $ws.Range("B7:F7").HorizontalAlignment = -4108; $ws.Range("B21:F21").Font.Bold = $true
+    $ws.Range("B5:F25").VerticalAlignment = -4108; $ws.Range("B5,F5,B7:B21,E7:F21").HorizontalAlignment = -4108
+    $ws.Range("C8:D20").WrapText = $true
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 7; $ws.Columns.Item("C").ColumnWidth = 21; $ws.Columns.Item("D").ColumnWidth = 19; $ws.Columns.Item("E").ColumnWidth = 7; $ws.Columns.Item("F").ColumnWidth = 9; $ws.Range("B3:F25").Font.Size = 9
+    $ws.Rows.Item(4).RowHeight = 28; for ($r = 8; $r -le 20; $r++) { $ws.Rows.Item($r).RowHeight = 22 }; $ws.Rows.Item(23).RowHeight = 28
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 1.27; $ps.BottomMargin = CmToPt 1.27; $ps.LeftMargin = CmToPt 1.27; $ps.RightMargin = CmToPt 1.27; $ps.HeaderMargin = CmToPt 0.8; $ps.FooterMargin = CmToPt 0.8; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$B`$1:`$F`$25"
+    L "F-018 원문 고정 배점표 대조 레이아웃 및 학교평가 분리 경계 적용 완료"
+
     # ---- 8. 학교정보 (원본 공개 데이터 표본 복사 — 학생·학부모 개인정보 아님) ----
     $wsSchool = $wbNew.Worksheets.Add()
     $wsSchool.Name = "학교정보"
@@ -934,10 +985,10 @@ try {
     # ---- 내부 DB 보호: 사용자 직접 편집을 막고, 매크로만 UserInterfaceOnly로 기록하게 한다. ----
     # 비밀번호를 지정하지 않으며, DB는 불러오기 순번 확인용으로 일반 숨김, 반복 DB는 VeryHidden 처리한다.
     $wsDB.Visible = 0  # xlSheetHidden
-    foreach ($internalSheet in @($wsDB, $wsItems, $wsVendors, $wsCommittee, $wsScore, $wsQuant, $wsQual)) {
+    foreach ($internalSheet in @($wsDB, $wsItems, $wsVendors, $wsCommittee, $wsScore, $wsQuant, $wsQual, $wsSelf)) {
         $internalSheet.Protect("", $true, $true, $true, $true)
     }
-    foreach ($internalSheet in @($wsItems, $wsVendors, $wsCommittee, $wsScore, $wsQuant, $wsQual)) {
+    foreach ($internalSheet in @($wsItems, $wsVendors, $wsCommittee, $wsScore, $wsQuant, $wsQual, $wsSelf)) {
         $internalSheet.Visible = 2  # xlSheetVeryHidden
     }
     L "DB 및 반복 DB 시트 보호 완료 (DB=숨김, 반복 DB=VeryHidden, UserInterfaceOnly 매크로 기록 허용, 비밀번호 없음)"
