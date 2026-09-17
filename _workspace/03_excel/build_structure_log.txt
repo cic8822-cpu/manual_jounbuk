@@ -1,4 +1,4 @@
-학교정보 시드 통합문서를 읽기 전용으로 열기 완료: C:\Users\최익창\Downloads\나연수\20230808_용역계약갈라잡이(디깅모멘텀)_이행원.xlsm
+학교정보 시드 통합문서를 읽기 전용으로 열기 완료: C:\Users\user\Downloads\나연수_26.9.10\20230808_용역계약갈라잡이(디깅모멘텀)_이행원.xlsm
 사용설명서 시트 작성 완료
 기초자료입력 시트 작성 완료
 DB 시트 작성 완료 (열 수: 20)
@@ -22,5 +22,5 @@ F-016 원문 고정 배점표 대조 레이아웃 및 수식 적용 완료
 절차안내 시트 작성 완료 (9단계 및 관련 Form ID 이동 UI)
 계약방법안내 시트 작성 완료 (2단계 입찰 예시 확인 및 수동 검토 경계)
 DB 및 반복 DB 시트 보호 완료 (DB=숨김, 반복 DB=VeryHidden, UserInterfaceOnly 매크로 기록 허용, 비밀번호 없음)
-저장 완료: C:\Users\최익창\Downloads\나연수\artifacts\excel\build.xlsm
-PID 30712 Excel 프로세스가 Quit() 이후에도 남아 있어 강제 종료함
+저장 완료: C:\Users\user\Downloads\나연수_26.9.10\artifacts\excel\build.xlsm
+PID 5076 Excel 프로세스가 Quit() 이후에도 남아 있어 강제 종료함

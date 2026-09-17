@@ -342,9 +342,7 @@ try {
         @("F-049","만족도 설문조사 실시","사후평가"), @("F-050","만족도 조사 설문지","사후평가"),
         @("F-051","만족도 설문조사 결과","사후평가"), @("F-052","만족도 조사 설문 결과 서식","사후평가")
     )
-    # F-016은 시트·DB 구조만 이번에 추가함(저장·출력 연동 미완성). 완료 전까지는 $implemented에
-    # 넣지 않아 서식선택_출력에서 "N"(미구현)으로 남겨 잘못 선택되지 않게 함.
-    $implemented = @{ "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-024" = "F-024_단가비율표" }
+    $implemented = @{ "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-016" = "F-016_정성적평가"; "F-024" = "F-024_단가비율표" }
     $deferred = @{ "F-013" = "HWPX 우선순위 위임(표·이미지 복합조판)" }
 
     $row = 5
@@ -726,7 +724,7 @@ try {
     $ws.Range("B6:F6").Merge() | Out-Null; $ws.Range("B6").Formula = '=IFERROR(INDEX(기초자료입력!$B$44:$B$53,I3),"")'; $ws.Range("B6").HorizontalAlignment = -4108
     $ws.Range("B7:F7").Merge() | Out-Null; $ws.Range("B7").Value2 = "※ 평가항목은 학교별 상황에 따라 자율적으로 변경 적용 가능함"; $ws.Range("B7").WrapText = $true
     $headersF16 = @("구분", "평가항목", "배점기준", "배점", "평가점수")
-    for ($i = 0; $i -lt $headersF16.Count; $i++) { $ws.Cells.Item(9, $i + 2).Value2 = $headersF16[$i] }
+    for ($i = 0; $i -lt $headersF16.Count; $i++) { $ws.Cells.Item(8, $i + 2).Value2 = $headersF16[$i] }
     $ws.Range("B9:B13").Merge() | Out-Null; $ws.Range("B9").Value2 = "정성적 평가`n(50점)"; $ws.Range("B9").WrapText = $true
     $ws.Range("C9").Value2 = "재질(15점)"; $ws.Range("D9").Value2 = "1. 옷감의 촉감과 질감의 상태(10)`n2. 섬유조직의 세밀함과 부드러움(10)`n탁월15·우수12·보통9·미흡6·불량3"; $ws.Range("E9").Value2 = 15
     $ws.Range("F9").Formula = '=IFERROR(INDEX(기초자료입력!$H$44:$H$53,I3),"")'
@@ -744,7 +742,7 @@ try {
     $ws.Range("B16:F16").Merge() | Out-Null; $ws.Range("B16").Formula = '="본인은 "&IF(기초자료입력!C5<>"",기초자료입력!C5,"20○○")&"학년도 "&IF(기초자료입력!C4<>"",기초자료입력!C4,"○○○○학교")&" 교복 학교주관 교복 구매업체 선정을 위한 제시된 항목에 따라 객관적이고 공정하게 심사할 것을 약속합니다."'; $ws.Range("B16").WrapText = $true
     $ws.Range("B17:F17").Merge() | Out-Null; $ws.Range("B17").Value2 = "20○○년    월    일"; $ws.Range("B17").HorizontalAlignment = -4108
     $ws.Range("B18:F18").Merge() | Out-Null; $ws.Range("B18").Value2 = "○○학교 교복선정위원회 평가위원 (인 또는 서명)"; $ws.Range("B18").HorizontalAlignment = -4108
-    $ws.Range("B5:F5,B9:F14").Borders.LineStyle = 1; $ws.Range("B9:F9").Font.Bold = $true; $ws.Range("B9:F9").HorizontalAlignment = -4108; $ws.Range("B14:F14").Font.Bold = $true
+    $ws.Range("B5:F5,B8:F14").Borders.LineStyle = 1; $ws.Range("B8:F8").Font.Bold = $true; $ws.Range("B8:F8").HorizontalAlignment = -4108; $ws.Range("B14:F14").Font.Bold = $true
     $ws.Range("B9:F14").VerticalAlignment = -4108; $ws.Range("B9:C13,E9:F14").HorizontalAlignment = -4108; $ws.Range("D9:D13").WrapText = $true
     $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 12; $ws.Columns.Item("C").ColumnWidth = 14; $ws.Columns.Item("D").ColumnWidth = 34; $ws.Columns.Item("E").ColumnWidth = 8; $ws.Columns.Item("F").ColumnWidth = 8; $ws.Range("B3:F18").Font.Size = 9
     $ws.Rows.Item(7).RowHeight = 24; for ($r = 9; $r -le 13; $r++) { $ws.Rows.Item($r).RowHeight = 45 }; $ws.Rows.Item(16).RowHeight = 30

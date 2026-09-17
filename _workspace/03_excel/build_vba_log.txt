@@ -3,8 +3,8 @@
 기존 모듈 Module_기초자료 없음
 기존 모듈 Module_출력 없음
 기존 모듈 Module_검색_절차 없음
-Module_기초자료 추가 완료 (줄 수: 754)
-Module_출력 추가 완료 (줄 수: 168)
+Module_기초자료 추가 완료 (줄 수: 847)
+Module_출력 추가 완료 (줄 수: 217)
 Module_검색_절차 추가 완료 (줄 수: 130)
 ThisWorkbook 문서모듈 식별: 현재_통합_문서
 기존 Workbook_Open 프로시저 없음
@@ -24,5 +24,5 @@ ThisWorkbook.Workbook_Open 추가 완료
 절차안내 Form ID 이동 버튼 배치 완료
 기존 버튼 btn계약방법반영 없음
 계약방법안내 반영 버튼 배치 완료
-VBA 매크로 및 버튼 추가 후 저장 완료: C:\Users\최익창\Downloads\나연수\artifacts\excel\build.xlsm
-PID 24820 Excel 프로세스가 Quit() 이후에도 남아 있어 강제 종료함
+VBA 매크로 및 버튼 추가 후 저장 완료: C:\Users\user\Downloads\나연수_26.9.10\artifacts\excel\build.xlsm
+PID 23216 Excel 프로세스가 Quit() 이후에도 남아 있어 강제 종료함

@@ -322,6 +322,42 @@ Public Function 검증_정량평가행검증() As Boolean
     검증_정량평가행검증 = 정량평가행검증(Sheets("기초자료입력"), False)
 End Function
 
+Private Function 정성평가행검증(ByVal wsIn As Worksheet, ByVal showMessage As Boolean) As Boolean
+    Dim sourceRow As Long, vendorName As String
+    Dim v1 As Variant, v2 As Variant, v3 As Variant, v4 As Variant, adjustment As Variant
+    Dim hasAnyScore As Boolean, hasAllScore As Boolean
+    정성평가행검증 = True
+    For sourceRow = 44 To 53
+        vendorName = Trim(wsIn.Cells(sourceRow, 2).Value & "")
+        v1 = wsIn.Cells(sourceRow, 8).Value
+        v2 = wsIn.Cells(sourceRow, 9).Value
+        v3 = wsIn.Cells(sourceRow, 10).Value
+        v4 = wsIn.Cells(sourceRow, 11).Value
+        adjustment = wsIn.Cells(sourceRow, 12).Value
+        hasAnyScore = Trim(v1 & "") <> "" Or Trim(v2 & "") <> "" Or Trim(v3 & "") <> "" Or Trim(v4 & "") <> "" Or Trim(adjustment & "") <> ""
+        hasAllScore = Trim(v1 & "") <> "" And Trim(v2 & "") <> "" And Trim(v3 & "") <> "" And Trim(v4 & "") <> "" And Trim(adjustment & "") <> ""
+        If hasAnyScore And vendorName = "" Then
+            If showMessage Then MsgBox "업체 " & (sourceRow - 43) & "행(F-016)은 업체명 없이 정성평가 점수만 입력할 수 없습니다.", vbExclamation
+            정성평가행검증 = False
+            Exit Function
+        ElseIf hasAnyScore And Not hasAllScore Then
+            If showMessage Then MsgBox "업체 " & (sourceRow - 43) & "행(F-016)은 재질·완성도·A/S·하자보상·가감점을 모두 입력하거나 모두 비워 두세요.", vbExclamation
+            정성평가행검증 = False
+            Exit Function
+        ElseIf hasAllScore Then
+            If Not 정수범위(v1, 0, 15) Or Not 정수범위(v2, 0, 10) Or Not 정수범위(v3, 0, 15) Or Not 정수범위(v4, 0, 10) Or Not 정수범위(adjustment, -15, 5) Then
+                If showMessage Then MsgBox "업체 " & (sourceRow - 43) & "행(F-016)은 재질(0~15)·완성도(0~10)·A/S(0~15)·하자보상(0~10)·가감점(-15~5) 범위의 정수만 입력하세요.", vbExclamation
+                정성평가행검증 = False
+                Exit Function
+            End If
+        End If
+    Next sourceRow
+End Function
+
+Public Function 검증_정성평가행검증() As Boolean
+    검증_정성평가행검증 = 정성평가행검증(Sheets("기초자료입력"), False)
+End Function
+
 Private Function 위원행검증(ByVal wsIn As Worksheet, ByVal showMessage As Boolean) As Boolean
     Dim sourceRow As Long, roleName As String, maskedLabel As String
     Dim hasRole As Boolean, hasMask As Boolean
@@ -447,7 +483,7 @@ Private Function DB레코드존재(ByVal wsDB As Worksheet, ByVal seq As Long) A
 End Function
 
 Private Function 저장경계검증(ByRef reason As String) As Boolean
-    Dim wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet, wsQuant As Worksheet
+    Dim wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet, wsQuant As Worksheet, wsQual As Worksheet
     Dim rowIndex As Long, lastRow As Long, seq As Long
     Dim vendorName As String, roleName As String, maskedLabel As String, itemName As String
     Set wsDB = Sheets("DB")
@@ -456,6 +492,7 @@ Private Function 저장경계검증(ByRef reason As String) As Boolean
     Set wsCommittee = Sheets("DB_위원")
     Set wsScore = Sheets("DB_평가")
     Set wsQuant = Sheets("DB_정량평가")
+    Set wsQual = Sheets("DB_정성평가")
 
     lastRow = 마지막사용행(wsDB)
     For rowIndex = 2 To lastRow
@@ -546,6 +583,20 @@ Private Function 저장경계검증(ByRef reason As String) As Boolean
             End If
         End If
     Next rowIndex
+    lastRow = 마지막사용행(wsQual)
+    For rowIndex = 2 To lastRow
+        If Application.WorksheetFunction.CountA(wsQual.Range("A" & rowIndex & ":G" & rowIndex)) > 0 Then
+            If Not 정수범위(wsQual.Cells(rowIndex, 1).Value, 1, 2147483647) Or _
+               Not DB레코드존재(wsDB, CLng(Val(wsQual.Cells(rowIndex, 1).Value))) Or _
+               Not 정수범위(wsQual.Cells(rowIndex, 2).Value, 1, 10) Or _
+               Not 정수범위(wsQual.Cells(rowIndex, 3).Value, 0, 15) Or Not 정수범위(wsQual.Cells(rowIndex, 4).Value, 0, 10) Or _
+               Not 정수범위(wsQual.Cells(rowIndex, 5).Value, 0, 15) Or Not 정수범위(wsQual.Cells(rowIndex, 6).Value, 0, 10) Or _
+               Not 정수범위(wsQual.Cells(rowIndex, 7).Value, -15, 5) Then
+                reason = "DB_정성평가 " & rowIndex & "행은 연결된 레코드와 정상 범위의 재질·완성도·A/S·하자보상·가감점을 모두 가져야 합니다."
+                Exit Function
+            End If
+        End If
+    Next rowIndex
     저장경계검증 = True
 End Function
 
@@ -625,6 +676,28 @@ Private Sub 정량평가복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal ws
     Next sourceRow
 End Sub
 
+Private Sub 정성평가복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsQual As Worksheet, ByVal seq As Long)
+    Dim rowIndex As Long, sourceRow As Long, targetRow As Long, vendorName As String
+    For rowIndex = wsQual.Cells(wsQual.Rows.Count, 1).End(xlUp).Row To 2 Step -1
+        If wsQual.Cells(rowIndex, 1).Value = seq Then wsQual.Rows(rowIndex).Delete
+    Next rowIndex
+    targetRow = wsQual.Cells(wsQual.Rows.Count, 1).End(xlUp).Row + 1
+    If targetRow < 2 Then targetRow = 2
+    For sourceRow = 44 To 53
+        vendorName = Trim(wsIn.Cells(sourceRow, 2).Value & "")
+        If vendorName <> "" And Trim(wsIn.Cells(sourceRow, 8).Value & "") <> "" Then
+            wsQual.Cells(targetRow, 1).Value = seq
+            wsQual.Cells(targetRow, 2).Value = sourceRow - 43
+            wsQual.Cells(targetRow, 3).Value = wsIn.Cells(sourceRow, 8).Value
+            wsQual.Cells(targetRow, 4).Value = wsIn.Cells(sourceRow, 9).Value
+            wsQual.Cells(targetRow, 5).Value = wsIn.Cells(sourceRow, 10).Value
+            wsQual.Cells(targetRow, 6).Value = wsIn.Cells(sourceRow, 11).Value
+            wsQual.Cells(targetRow, 7).Value = wsIn.Cells(sourceRow, 12).Value
+            targetRow = targetRow + 1
+        End If
+    Next sourceRow
+End Sub
+
 Private Sub 위원복사_기초자료_DB(ByVal wsIn As Worksheet, ByVal wsCommittee As Worksheet, ByVal seq As Long)
     Dim rowIndex As Long, sourceRow As Long, targetRow As Long
     For rowIndex = wsCommittee.Cells(wsCommittee.Rows.Count, 1).End(xlUp).Row To 2 Step -1
@@ -672,7 +745,7 @@ End Sub
 
 Private Sub 저장하기_실행(ByVal showMessage As Boolean)
     If Not 필수값검증() Then Exit Sub
-    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet, wsQuant As Worksheet
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet, wsQuant As Worksheet, wsQual As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
     Set wsItems = Sheets("DB_품목")
@@ -680,9 +753,11 @@ Private Sub 저장하기_실행(ByVal showMessage As Boolean)
     Set wsCommittee = Sheets("DB_위원")
     Set wsScore = Sheets("DB_평가")
     Set wsQuant = Sheets("DB_정량평가")
+    Set wsQual = Sheets("DB_정성평가")
     If Not 품목행검증(wsIn, showMessage) Then Exit Sub
     If Not 업체행검증(wsIn, showMessage) Then Exit Sub
     If Not 정량평가행검증(wsIn, showMessage) Then Exit Sub
+    If Not 정성평가행검증(wsIn, showMessage) Then Exit Sub
     If Not 위원행검증(wsIn, showMessage) Then Exit Sub
     If Not 평가행검증(wsIn, showMessage) Then Exit Sub
     If showMessage And 검증_업체중복경고() Then MsgBox "중복된 업체명이 있습니다. 실제 동일 업체인지 확인한 뒤 저장하세요.", vbExclamation
@@ -704,6 +779,7 @@ Private Sub 저장하기_실행(ByVal showMessage As Boolean)
     Call 품목복사_기초자료_DB(wsIn, wsItems, seq)
     Call 업체복사_기초자료_DB(wsIn, wsVendors, seq)
     Call 정량평가복사_기초자료_DB(wsIn, wsQuant, seq)
+    Call 정성평가복사_기초자료_DB(wsIn, wsQual, seq)
     Call 위원복사_기초자료_DB(wsIn, wsCommittee, seq)
     Call 평가복사_기초자료_DB(wsIn, wsScore, seq)
 
@@ -721,7 +797,7 @@ End Sub
 
 Private Sub 수정하기_실행(ByVal showMessage As Boolean)
     If Not 필수값검증() Then Exit Sub
-    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet, wsQuant As Worksheet
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet, wsQuant As Worksheet, wsQual As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
     Set wsItems = Sheets("DB_품목")
@@ -729,9 +805,11 @@ Private Sub 수정하기_실행(ByVal showMessage As Boolean)
     Set wsCommittee = Sheets("DB_위원")
     Set wsScore = Sheets("DB_평가")
     Set wsQuant = Sheets("DB_정량평가")
+    Set wsQual = Sheets("DB_정성평가")
     If Not 품목행검증(wsIn, showMessage) Then Exit Sub
     If Not 업체행검증(wsIn, showMessage) Then Exit Sub
     If Not 정량평가행검증(wsIn, showMessage) Then Exit Sub
+    If Not 정성평가행검증(wsIn, showMessage) Then Exit Sub
     If Not 위원행검증(wsIn, showMessage) Then Exit Sub
     If Not 평가행검증(wsIn, showMessage) Then Exit Sub
     If showMessage And 검증_업체중복경고() Then MsgBox "중복된 업체명이 있습니다. 실제 동일 업체인지 확인한 뒤 수정하세요.", vbExclamation
@@ -753,6 +831,7 @@ Private Sub 수정하기_실행(ByVal showMessage As Boolean)
     Call 품목복사_기초자료_DB(wsIn, wsItems, CLng(seq))
     Call 업체복사_기초자료_DB(wsIn, wsVendors, CLng(seq))
     Call 정량평가복사_기초자료_DB(wsIn, wsQuant, CLng(seq))
+    Call 정성평가복사_기초자료_DB(wsIn, wsQual, CLng(seq))
     Call 위원복사_기초자료_DB(wsIn, wsCommittee, CLng(seq))
     Call 평가복사_기초자료_DB(wsIn, wsScore, CLng(seq))
     If showMessage Then MsgBox "수정되었습니다. (순번 " & seq & ")", vbInformation
@@ -774,7 +853,7 @@ Public Sub 검증_첫레코드불러오기()
 End Sub
 
 Private Sub 불러오기_순번(ByVal seq As Long, ByVal showMessage As Boolean)
-    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet, wsQuant As Worksheet
+    Dim wsIn As Worksheet, wsDB As Worksheet, wsItems As Worksheet, wsVendors As Worksheet, wsCommittee As Worksheet, wsScore As Worksheet, wsQuant As Worksheet, wsQual As Worksheet
     Set wsIn = Sheets("기초자료입력")
     Set wsDB = Sheets("DB")
     Set wsItems = Sheets("DB_품목")
@@ -782,6 +861,7 @@ Private Sub 불러오기_순번(ByVal seq As Long, ByVal showMessage As Boolean)
     Set wsCommittee = Sheets("DB_위원")
     Set wsScore = Sheets("DB_평가")
     Set wsQuant = Sheets("DB_정량평가")
+    Set wsQual = Sheets("DB_정성평가")
     Dim r As Long
     r = seq + 1
     If wsDB.Cells(r, 1).Value <> seq Then
@@ -840,10 +920,23 @@ Private Sub 불러오기_순번(ByVal seq As Long, ByVal showMessage As Boolean)
         End If
     Next itemRow
     wsIn.Range("B44:F53").ClearContents
+    wsIn.Range("H44:L53").ClearContents
     For itemRow = 2 To wsVendors.Cells(wsVendors.Rows.Count, 1).End(xlUp).Row
         If wsVendors.Cells(itemRow, 1).Value = seq Then
             inputRow = 43 + CLng(wsVendors.Cells(itemRow, 2).Value)
             If inputRow >= 44 And inputRow <= 53 Then wsIn.Cells(inputRow, 2).Value = wsVendors.Cells(itemRow, 3).Value
+        End If
+    Next itemRow
+    For itemRow = 2 To wsQual.Cells(wsQual.Rows.Count, 1).End(xlUp).Row
+        If wsQual.Cells(itemRow, 1).Value = seq Then
+            inputRow = 43 + CLng(wsQual.Cells(itemRow, 2).Value)
+            If inputRow >= 44 And inputRow <= 53 Then
+                wsIn.Cells(inputRow, 8).Value = wsQual.Cells(itemRow, 3).Value
+                wsIn.Cells(inputRow, 9).Value = wsQual.Cells(itemRow, 4).Value
+                wsIn.Cells(inputRow, 10).Value = wsQual.Cells(itemRow, 5).Value
+                wsIn.Cells(inputRow, 11).Value = wsQual.Cells(itemRow, 6).Value
+                wsIn.Cells(inputRow, 12).Value = wsQual.Cells(itemRow, 7).Value
+            End If
         End If
     Next itemRow
     For itemRow = 2 To wsQuant.Cells(wsQuant.Rows.Count, 1).End(xlUp).Row
@@ -878,15 +971,16 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
     lastRow = wsSel.Cells(wsSel.Rows.Count, 2).End(xlUp).Row
 
     Dim tmp() As String
-    ReDim tmp(1 To lastRow + 10)   ' F-015는 업체별로 최대 10쪽까지 늘어날 수 있어 여유를 둠
+    ReDim tmp(1 To lastRow + 20)   ' F-015·F-016은 업체별로 최대 10쪽씩 늘어날 수 있어 여유를 둠
     Dim cnt As Long
     cnt = 0
-    Dim skippedNotReady As Long, skippedDeferred As Long, skippedInvalidF024 As Long, skippedInvalidF014 As Long, skippedInvalidF015 As Long
+    Dim skippedNotReady As Long, skippedDeferred As Long, skippedInvalidF024 As Long, skippedInvalidF014 As Long, skippedInvalidF015 As Long, skippedInvalidF016 As Long
     skippedNotReady = 0
     skippedDeferred = 0
     skippedInvalidF024 = 0
     skippedInvalidF014 = 0
     skippedInvalidF015 = 0
+    skippedInvalidF016 = 0
 
     Dim r As Long
     For r = 5 To lastRow
@@ -912,6 +1006,21 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
                     Next vendorRow
                     If Not addedAny Then skippedInvalidF015 = skippedInvalidF015 + 1
                 End If
+            ElseIf wsSel.Cells(r, 2).Value = "F-016" Then
+                If Not 검증_F016출력가능() Then
+                    skippedInvalidF016 = skippedInvalidF016 + 1
+                Else
+                    Dim qualitativeVendorRow As Long, addedQualitative As Boolean
+                    addedQualitative = False
+                    For qualitativeVendorRow = 44 To 53
+                        If F016업체행완전한가(qualitativeVendorRow) Then
+                            cnt = cnt + 1
+                            tmp(cnt) = F016임시시트생성(qualitativeVendorRow - 43)
+                            addedQualitative = True
+                        End If
+                    Next qualitativeVendorRow
+                    If Not addedQualitative Then skippedInvalidF016 = skippedInvalidF016 + 1
+                End If
             ElseIf status = "Y" Then
                 cnt = cnt + 1
                 tmp(cnt) = wsSel.Cells(r, 6).Value
@@ -925,14 +1034,14 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
 
     If cnt = 0 Then
         MsgBox "구현된 서식이 선택되지 않았습니다." & vbCrLf & _
-             "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-014 필수값·평가행 오류: " & skippedInvalidF014 & "건, F-015 업체·정량평가 오류: " & skippedInvalidF015 & "건, F-024 입력 오류·빈 품목·6품목 초과: " & skippedInvalidF024 & "건", vbExclamation
+             "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-014 필수값·평가행 오류: " & skippedInvalidF014 & "건, F-015 업체·정량평가 오류: " & skippedInvalidF015 & "건, F-016 업체·정성평가 오류: " & skippedInvalidF016 & "건, F-024 입력 오류·빈 품목·6품목 초과: " & skippedInvalidF024 & "건", vbExclamation
         선택된시트목록 = 0
         Exit Function
     End If
 
-    If skippedNotReady > 0 Or skippedDeferred > 0 Or skippedInvalidF024 > 0 Or skippedInvalidF014 > 0 Or skippedInvalidF015 > 0 Then
+    If skippedNotReady > 0 Or skippedDeferred > 0 Or skippedInvalidF024 > 0 Or skippedInvalidF014 > 0 Or skippedInvalidF015 > 0 Or skippedInvalidF016 > 0 Then
         MsgBox "일부 선택 서식은 아직 준비되지 않아 제외합니다." & vbCrLf & _
-               "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-014 필수값·평가행 오류: " & skippedInvalidF014 & "건, F-015 업체·정량평가 오류: " & skippedInvalidF015 & "건, F-024 입력 오류·빈 품목·6품목 초과: " & skippedInvalidF024 & "건", vbInformation
+               "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-014 필수값·평가행 오류: " & skippedInvalidF014 & "건, F-015 업체·정량평가 오류: " & skippedInvalidF015 & "건, F-016 업체·정성평가 오류: " & skippedInvalidF016 & "건, F-024 입력 오류·빈 품목·6품목 초과: " & skippedInvalidF024 & "건", vbInformation
     End If
 
     ReDim outNames(1 To cnt)
@@ -968,6 +1077,18 @@ Public Function 검증_F015출력가능() As Boolean
     검증_F015출력가능 = 검증_필수값검증() And hasCompleteVendor
 End Function
 
+Public Function 검증_F016출력가능() As Boolean
+    Dim vendorRow As Long, hasCompleteVendor As Boolean
+    If Not 검증_정성평가행검증() Then Exit Function
+    For vendorRow = 44 To 53
+        If F016업체행완전한가(vendorRow) Then
+            hasCompleteVendor = True
+            Exit For
+        End If
+    Next vendorRow
+    검증_F016출력가능 = 검증_필수값검증() And hasCompleteVendor
+End Function
+
 Private Function F015업체행완전한가(ByVal sourceRow As Long) As Boolean
     Dim wsIn As Worksheet
     Set wsIn = Sheets("기초자료입력")
@@ -976,6 +1097,17 @@ Private Function F015업체행완전한가(ByVal sourceRow As Long) As Boolean
         Trim(wsIn.Cells(sourceRow, 5).Value & "") <> "" And Trim(wsIn.Cells(sourceRow, 6).Value & "") <> "" And _
         정수범위(wsIn.Cells(sourceRow, 3).Value, 0, 10) And 정수범위(wsIn.Cells(sourceRow, 4).Value, 0, 10) And _
         정수범위(wsIn.Cells(sourceRow, 5).Value, 0, 15) And 정수범위(wsIn.Cells(sourceRow, 6).Value, 0, 15)
+End Function
+
+Private Function F016업체행완전한가(ByVal sourceRow As Long) As Boolean
+    Dim wsIn As Worksheet
+    Set wsIn = Sheets("기초자료입력")
+    F016업체행완전한가 = Trim(wsIn.Cells(sourceRow, 2).Value & "") <> "" And _
+        Trim(wsIn.Cells(sourceRow, 8).Value & "") <> "" And Trim(wsIn.Cells(sourceRow, 9).Value & "") <> "" And _
+        Trim(wsIn.Cells(sourceRow, 10).Value & "") <> "" And Trim(wsIn.Cells(sourceRow, 11).Value & "") <> "" And Trim(wsIn.Cells(sourceRow, 12).Value & "") <> "" And _
+        정수범위(wsIn.Cells(sourceRow, 8).Value, 0, 15) And 정수범위(wsIn.Cells(sourceRow, 9).Value, 0, 10) And _
+        정수범위(wsIn.Cells(sourceRow, 10).Value, 0, 15) And 정수범위(wsIn.Cells(sourceRow, 11).Value, 0, 10) And _
+        정수범위(wsIn.Cells(sourceRow, 12).Value, -15, 5)
 End Function
 
 Private Function F015임시시트생성(ByVal vendorSlot As Long) As String
@@ -988,12 +1120,22 @@ Private Function F015임시시트생성(ByVal vendorSlot As Long) As String
     F015임시시트생성 = wsTemp.Name
 End Function
 
+Private Function F016임시시트생성(ByVal vendorSlot As Long) As String
+    Dim wsF16 As Worksheet, wsTemp As Worksheet
+    Set wsF16 = Sheets("F-016_정성적평가")
+    wsF16.Copy After:=Sheets(Sheets.Count)
+    Set wsTemp = Sheets(Sheets.Count)
+    wsTemp.Name = "F016_임시_" & vendorSlot & "_" & Format(Now, "hhnnss")
+    wsTemp.Range("I3").Value = vendorSlot
+    F016임시시트생성 = wsTemp.Name
+End Function
+
 Private Sub F015임시시트정리(ByRef names() As String)
     Dim i As Long
     On Error Resume Next
     Application.DisplayAlerts = False
     For i = LBound(names) To UBound(names)
-        If Left(names(i), 5) = "F015_" Then Sheets(names(i)).Delete
+        If Left(names(i), 5) = "F015_" Or Left(names(i), 5) = "F016_" Then Sheets(names(i)).Delete
     Next i
     Application.DisplayAlerts = True
     On Error GoTo 0
@@ -1217,7 +1359,7 @@ Private Sub Workbook_Open()
     ' UserInterfaceOnly 보호 설정은 파일을 다시 열면 유지되지 않으므로, 매크로 허용 후 다시 적용한다.
     ' 비밀번호는 사용하지 않으며 일반 사용자의 직접 편집만 제한한다.
     Dim internalName As Variant
-    For Each internalName In Array("DB", "DB_품목", "DB_업체", "DB_위원", "DB_평가", "DB_정량평가")
+    For Each internalName In Array("DB", "DB_품목", "DB_업체", "DB_위원", "DB_평가", "DB_정량평가", "DB_정성평가")
         Sheets(CStr(internalName)).Protect Password:="", DrawingObjects:=True, Contents:=True, Scenarios:=True, UserInterfaceOnly:=True
     Next internalName
 End Sub
