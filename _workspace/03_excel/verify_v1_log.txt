@@ -153,11 +153,11 @@ PASS: F-017 업체별 임시 인쇄 시트가 PDF 저장 후 정리됨
 PASS: F-018 업체별 임시 인쇄 시트가 PDF 저장 후 정리됨
 PASS: F-019 업체별 임시 인쇄 시트가 PDF 저장 후 정리됨
 PASS: F-020 업체별 임시 인쇄 시트가 PDF 저장 후 정리됨
-PDF 생성 확인: C:\Users\user\Downloads\나연수_26.9.10\artifacts\excel\_validation\output\선택서식_20260917_180214.pdf (220.9 KB)
+PDF 생성 확인: C:\Users\user\Downloads\나연수_26.9.10\artifacts\excel\_validation\output\선택서식_20260917_180400.pdf (220.9 KB)
 PASS: 선택 서식 PDF가 비어 있지 않음
 PASS: F-017 빈 배포본은 업체명 미선택 시 0 대신 빈 칸을 표시함
 PASS: 필수값이 비어 있으면 저장 검증이 거부됨
 테스트 데이터 정리(기초자료입력 초기화, DB 2행 삭제) 완료
 테스트 데이터 정리 완료(검증 사본만 변경, 배포본 저장 없음)
-PID 4960 Excel 프로세스가 Quit() 이후에도 남아 있어 강제 종료함
+PID 7248 Excel 프로세스가 Quit() 이후에도 남아 있어 강제 종료함
 PASS: Excel v1 검증 전체 통과
