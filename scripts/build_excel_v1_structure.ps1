@@ -26,7 +26,10 @@ $excelProcessId = Get-Process -Name EXCEL -ErrorAction SilentlyContinue |
 $excel.Visible = $false
 $excel.DisplayAlerts = $false
 $log = New-Object System.Text.StringBuilder
-function L($s) { [void]$log.AppendLine($s) }
+function L($s) {
+    [void]$log.AppendLine($s)
+    [System.IO.File]::WriteAllText($logPath, $log.ToString(), [System.Text.UTF8Encoding]::new($false))
+}
 
 $wbNew = $null
 $wbSrc = $null
@@ -54,7 +57,7 @@ try {
     $ws.Range("A5").Value2 = "3. '서식선택_출력' 시트에서 원하는 서식에 체크(TRUE)한 뒤 [선택 서식 인쇄 미리보기]/[선택 서식 PDF 저장] 버튼을 누릅니다."
     $ws.Range("A6").Value2 = "4. '학교검색' 시트에서 학교명·지역·급별 조건을 입력하고 [검색] 후 결과 행을 선택해 [선택 학교를 기초자료에 반영]을 누르면 학교명이 기초자료입력!C4에 반영됩니다."
     $ws.Range("A7").Value2 = "5. '절차안내' 시트는 교복구매 9단계와 단계별 관련 Form ID를 제공합니다. 단계 행을 선택하고 [관련 Form ID로 이동]을 누르면 서식선택_출력의 해당 Form ID로 이동합니다."
-    $ws.Range("A8").Value2 = "6. 이 v1 버전은 F-007, F-014, F-024 세 서식만 완전히 구현되어 있습니다. 나머지 서식은 '구현상태' 열에 표시된 대로 순차 추가 예정입니다."
+    $ws.Range("A8").Value2 = "6. 구현된 서식은 서식선택_출력의 '구현상태=Y'로 표시됩니다. 나머지 서식은 순차 추가 예정입니다."
     $ws.Range("A9").Value2 = "7. F-013(교복 디자인 및 규격서)은 표·이미지가 많은 다쪽(11쪽) 문서로, Excel보다 HWPX 경로가 적합하여 이번 버전에서는 보류하고 document-automation-engineer 협업 대상으로 남겼습니다."
     $ws.Range("A10").Value2 = "8. 업체 후보는 '기초자료입력' 시트의 업체 반복행에 상호명만 입력합니다. 대표자·연락처·전화번호·사업자번호는 입력·저장하지 않으며, 중복 상호는 실제 동일 업체인지 확인합니다."
     $ws.Range("A11").Value2 = "9. 위원 반복행에는 역할·직위와 ○ 또는 *를 포함한 마스킹 식별표시만 입력합니다. 실제 성명·연락처·서명은 입력·저장하지 않습니다. 평가점수는 항목별 배점을 초과할 수 없고 총점은 자동 계산됩니다."
@@ -362,7 +365,7 @@ try {
         @("F-049","만족도 설문조사 실시","사후평가"), @("F-050","만족도 조사 설문지","사후평가"),
         @("F-051","만족도 설문조사 결과","사후평가"), @("F-052","만족도 조사 설문 결과 서식","사후평가")
     )
-    $implemented = @{ "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-016" = "F-016_정성적평가"; "F-017" = "F-017_제출서류자기확인서"; "F-018" = "F-018_정량적평가자기평점표"; "F-019" = "F-019_입찰참가신청서"; "F-020" = "F-020_입찰참가신고서"; "F-024" = "F-024_단가비율표" }
+    $implemented = @{ "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-016" = "F-016_정성적평가"; "F-017" = "F-017_제출서류자기확인서"; "F-018" = "F-018_정량적평가자기평점표"; "F-019" = "F-019_입찰참가신청서"; "F-020" = "F-020_입찰참가신고서"; "F-021" = "F-021_교복납품제안서"; "F-022" = "F-022_교복납품실적표"; "F-023" = "F-023_교복제조사양서"; "F-024" = "F-024_단가비율표"; "F-025" = "F-025_교복AS계획서" }
     $deferred = @{ "F-013" = "HWPX 우선순위 위임(표·이미지 복합조판)" }
 
     $row = 5
@@ -906,6 +909,119 @@ try {
     $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 0.8; $ps.BottomMargin = CmToPt 0.8; $ps.LeftMargin = CmToPt 1.0; $ps.RightMargin = CmToPt 1.0; $ps.HeaderMargin = CmToPt 0.5; $ps.FooterMargin = CmToPt 0.5; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$B`$1:`$E`$20"
     L "F-020 원문 입찰 참가 신고서 대조 레이아웃 및 개인정보 빈칸 경계 적용 완료"
 
+    # ---- 7i. F-021 교복(동·하복) 납품 제안서 ----
+    # 원문 HWPX [9-9] [서식 4]을 대조한다. 업체명(R-03)과 학교 공통값만 반영하고 대표자·주소·연락처·서명은 빈칸으로 보존한다.
+    $wsF21 = $wbNew.Worksheets.Add(); $wsF21.Name = "F-021_교복납품제안서"; $ws = $wsF21
+    $ws.Range("B1:E1").Merge() | Out-Null; $ws.Range("B1").Value2 = "[검토용] 원본 HWPX [9-9] [서식 4] 대조. 업체명만 자동 반영하며 대표자·주소·연락처·서명은 직접 작성합니다."; $ws.Range("B1").Font.Size = 7; $ws.Range("B1").Font.Color = 255; $ws.Range("B1").WrapText = $false
+    $ws.Range("G2").Value2 = "선택 업체 순번(자동, 인쇄 전용)"; $ws.Range("G2").Font.Size = 7; $ws.Range("G3").Value2 = 1
+    $ws.Range("B3:E4").Merge() | Out-Null; $ws.Range("B3").Formula = '=IF(기초자료입력!$C$5="","20○○학년도","20"&RIGHT(기초자료입력!$C$5,2)&"학년도")&" "&IF(기초자료입력!$C$4="","○○○○학교",기초자료입력!$C$4)&" 교복(동·하복) 납품 제안서"'; $ws.Range("B3").Font.Size = 14; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108; $ws.Range("B3").VerticalAlignment = -4108; $ws.Range("B3").WrapText = $true
+    $ws.Range("B5:E5").Merge() | Out-Null; $ws.Range("B5").Value2 = "※ 업체명만 기초자료의 반복행에서 반영합니다. 일반현황·연혁·제안자 성명은 직접 작성하십시오."; $ws.Range("B5").Font.Size = 8; $ws.Range("B5").WrapText = $true
+    $ws.Range("B7:E7").Merge() | Out-Null; $ws.Range("B7").Value2 = "1. 일반현황 및 연혁"; $ws.Range("B7").Font.Bold = $true
+    $labels = @("회사명","대표자","사업분야","주소","연락처","회사설립년도","직원현황","해당부문 사업기간"); for ($i = 0; $i -lt $labels.Count; $i++) { $r = 8 + $i; $ws.Range("B$r").Value2 = $labels[$i]; $ws.Range("B$r").Font.Bold = $true; $ws.Range("C$r`:E$r").Merge() | Out-Null }
+    $ws.Range("C8").Formula = '=IFERROR(IF(INDEX(기초자료입력!$B$44:$B$53,$G$3)=0,"",INDEX(기초자료입력!$B$44:$B$53,$G$3)),"")'; $ws.Range("C12").Value2 = "전화:                         FAX:"
+    $ws.Range("B16:E17").Merge() | Out-Null; $ws.Range("B16").Value2 = "＜주요연혁＞"; $ws.Range("B16").VerticalAlignment = -4108
+    $ws.Range("B19:E19").Merge() | Out-Null; $ws.Range("B19").Value2 = "2. 제안(제출)서류"; $ws.Range("B19").Font.Bold = $true
+    $ws.Range("B20:E27").Merge() | Out-Null; $ws.Range("B20").Value2 = "① 교복 납품 실적표(F-022)" + [Environment]::NewLine + "② 교복 제조 사양서(F-023)" + [Environment]::NewLine + "③ 품목별 단가 비율표(F-024)" + [Environment]::NewLine + "④ 교복 A/S 계획서(F-025)" + [Environment]::NewLine + "⑤ 소비자 불만 처리 계획(F-026)" + [Environment]::NewLine + "⑥ 위임장(F-027), 서약서(F-028), 개인정보 동의서(F-029)" + [Environment]::NewLine + "⑦ 품질인증·시험성적 등 제안요청서에서 정한 증빙서류"; $ws.Range("B20").Font.Size = 9; $ws.Range("B20").WrapText = $true; $ws.Range("B20").VerticalAlignment = -4160
+    $ws.Range("B29:E29").Merge() | Out-Null; $ws.Range("B29").Formula = '=IF(기초자료입력!$C$5="","20○○. ○○. ○○","20"&RIGHT(기초자료입력!$C$5,2)&". ○○. ○○")'; $ws.Range("B29").HorizontalAlignment = -4108
+    $ws.Range("B30:E30").Merge() | Out-Null; $ws.Range("B30").Value2 = "제안자 성명                         (서명 또는 날인)"; $ws.Range("B30").HorizontalAlignment = -4108
+    $ws.Range("B31:E31").Merge() | Out-Null; $ws.Range("B31").Formula = '=IF(기초자료입력!$C$4="","○○○○학교장 귀하",기초자료입력!$C$4&"장 귀하")'; $ws.Range("B31").HorizontalAlignment = -4108
+    $ws.Range("B7:E7,B8:E17,B19:E27,B29:E31").Borders.LineStyle = 1; $ws.Range("B7:E31").VerticalAlignment = -4108
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 19; $ws.Columns.Item("C").ColumnWidth = 17; $ws.Columns.Item("D").ColumnWidth = 14; $ws.Columns.Item("E").ColumnWidth = 18; $ws.Range("B3:E31").Font.Size = 10; $ws.Range("B5").Font.Size = 8
+    $ws.Rows.Item(1).RowHeight = 12; $ws.Rows.Item(2).RowHeight = 8; $ws.Rows.Item(3).RowHeight = 25; $ws.Rows.Item(4).RowHeight = 25; $ws.Rows.Item(5).RowHeight = 28; $ws.Rows.Item(6).RowHeight = 6; $ws.Rows.Item(7).RowHeight = 18; for ($r = 8; $r -le 15; $r++) { $ws.Rows.Item($r).RowHeight = 18 }; $ws.Rows.Item(16).RowHeight = 24; $ws.Rows.Item(17).RowHeight = 24; $ws.Rows.Item(18).RowHeight = 6; $ws.Rows.Item(19).RowHeight = 18; for ($r = 20; $r -le 27; $r++) { $ws.Rows.Item($r).RowHeight = 16 }; $ws.Rows.Item(28).RowHeight = 6; $ws.Rows.Item(29).RowHeight = 18; $ws.Rows.Item(30).RowHeight = 18; $ws.Rows.Item(31).RowHeight = 18
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 0.7; $ps.BottomMargin = CmToPt 0.7; $ps.LeftMargin = CmToPt 0.9; $ps.RightMargin = CmToPt 0.9; $ps.HeaderMargin = CmToPt 0.3; $ps.FooterMargin = CmToPt 0.3; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$B`$1:`$E`$31"
+    L "F-021 원문 교복 납품 제안서 대조 레이아웃 및 개인정보 빈칸 경계 적용 완료"
+
+    # ---- 7j. F-022 교복 납품 실적표 ----
+    # 원문 HWPX [9-10] [서식 5]을 대조한다. 업체명(R-03)만 자동 반영하며, 사업명·기간·금액·발주처·비고는
+    # 업체별 실적증명서 원본과 대조하여 이 출력 양식에 수기로 기재한다. 공통 DB로 전파하거나 자동 저장하지 않는다.
+    $wsF22 = $wbNew.Worksheets.Add(); $wsF22.Name = "F-022_교복납품실적표"; $ws = $wsF22
+    $ws.Range("B1:G1").Merge() | Out-Null; $ws.Range("B1").Value2 = "[검토용] 원본 HWPX [9-10] [서식 5] 대조. 업체명만 자동 반영하며 실적행은 업체별 증명서와 대조하여 직접 작성합니다."; $ws.Range("B1").Font.Size = 7; $ws.Range("B1").Font.Color = 255; $ws.Range("B1").WrapText = $false
+    $ws.Range("I2").Value2 = "선택 업체 순번(자동, 인쇄 전용)"; $ws.Range("I2").Font.Size = 7; $ws.Range("I3").Value2 = 1
+    $ws.Range("B3:G4").Merge() | Out-Null; $ws.Range("B3").Value2 = "교복 납품 실적표"; $ws.Range("B3").Font.Size = 15; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108; $ws.Range("B3").VerticalAlignment = -4108
+    $ws.Range("B5:G5").Merge() | Out-Null; $ws.Range("B5").Formula = '="(제안자: "&IFERROR(IF(INDEX(기초자료입력!$B$44:$B$53,$I$3)=0,"",INDEX(기초자료입력!$B$44:$B$53,$I$3)),"")&")"'; $ws.Range("B5").HorizontalAlignment = -4108
+    $ws.Range("B7:G7").Merge() | Out-Null; $ws.Range("B7").Value2 = "교복 납품 실적(입찰공고일 기준 최근 3년 이내 실적)"; $ws.Range("B7").Font.Bold = $true; $ws.Range("B7").HorizontalAlignment = -4108
+    $ws.Range("B9").Value2 = "순번"; $ws.Range("C9").Value2 = "사업명"; $ws.Range("D9").Value2 = "사업기간"; $ws.Range("E9").Value2 = "계약금액`n(천원)"; $ws.Range("F9").Value2 = "발주처"; $ws.Range("G9").Value2 = "비고"
+    $ws.Range("B9:G9").Font.Bold = $true; $ws.Range("B9:G9").HorizontalAlignment = -4108; $ws.Range("B9:G9").VerticalAlignment = -4108; $ws.Range("B9:G9").WrapText = $true
+    $ws.Range("B10").Value2 = 1; $ws.Range("B11").Value2 = 2; $ws.Range("B12").Value2 = 3; $ws.Range("B13").Value2 = 4; $ws.Range("B14").Value2 = 5; $ws.Range("B15").Value2 = 6; $ws.Range("B16").Value2 = 7; $ws.Range("B17").Value2 = 8; $ws.Range("B18").Value2 = 9
+    $ws.Range("B10:B18").HorizontalAlignment = -4108
+    $ws.Range("B20:G20").Merge() | Out-Null; $ws.Range("B20").Value2 = "붙임  실적증명서 각 1부."; $ws.Range("B21:G21").Merge() | Out-Null; $ws.Range("B21").Value2 = "위와 같이 납품실적을 제출합니다."; $ws.Range("B23:G23").Merge() | Out-Null; $ws.Range("B23").Formula = '=IF(기초자료입력!$C$5="","20○○.  .  .","20"&RIGHT(기초자료입력!$C$5,2)&".  .  .")'; $ws.Range("B23").HorizontalAlignment = -4108
+    $ws.Range("B24:G24").Merge() | Out-Null; $ws.Range("B24").Value2 = "제안자 성 명                         (서명 또는 날인)"; $ws.Range("B24").HorizontalAlignment = -4108
+    $ws.Range("B25:G25").Merge() | Out-Null; $ws.Range("B25").Formula = '=IF(기초자료입력!$C$4="","○○○○학교장 귀하",기초자료입력!$C$4&"장 귀하")'; $ws.Range("B25").HorizontalAlignment = -4108
+    $ws.Range("B3:G5,B7:G7,B9:G18,B20:G21,B23:G25").Borders.LineStyle = 1; $ws.Range("B3:G25").VerticalAlignment = -4108
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 6; $ws.Columns.Item("C").ColumnWidth = 20; $ws.Columns.Item("D").ColumnWidth = 14; $ws.Columns.Item("E").ColumnWidth = 12; $ws.Columns.Item("F").ColumnWidth = 15; $ws.Columns.Item("G").ColumnWidth = 13; $ws.Range("B3:G25").Font.Size = 10
+    $ws.Rows.Item(1).RowHeight = 12; $ws.Rows.Item(2).RowHeight = 8; $ws.Rows.Item(3).RowHeight = 24; $ws.Rows.Item(4).RowHeight = 24; $ws.Rows.Item(5).RowHeight = 20; $ws.Rows.Item(6).RowHeight = 6; $ws.Rows.Item(7).RowHeight = 20; $ws.Rows.Item(8).RowHeight = 6; $ws.Rows.Item(9).RowHeight = 30; for ($r = 10; $r -le 18; $r++) { $ws.Rows.Item($r).RowHeight = 24 }; $ws.Rows.Item(19).RowHeight = 6; $ws.Rows.Item(20).RowHeight = 18; $ws.Rows.Item(21).RowHeight = 18; $ws.Rows.Item(22).RowHeight = 8; $ws.Rows.Item(23).RowHeight = 18; $ws.Rows.Item(24).RowHeight = 18; $ws.Rows.Item(25).RowHeight = 18
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 0.8; $ps.BottomMargin = CmToPt 0.8; $ps.LeftMargin = CmToPt 0.6; $ps.RightMargin = CmToPt 0.6; $ps.HeaderMargin = CmToPt 0.3; $ps.FooterMargin = CmToPt 0.3; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$B`$1:`$G`$25"
+    L "F-022 원문 교복 납품 실적표 대조 레이아웃(실적행 9행) 및 업체별 수기 실적행 경계 적용 완료"
+
+    # ---- 7k. F-023 교복 제조 사양서 ----
+    # 원문 HWPX [9-11] [서식 6]을 대조한다. 업체명(R-03)과 학교 공통값만 반영하고 재질·설명 내용은
+    # 업체가 직접 작성하는 빈 칸으로 유지한다. 서식_매핑표.md의 F-023 행(R-04~R-06/K-01)은 원문에 없는
+    # 품목·수량·단가·금액 필드를 가리켜 F-013 행과 동일한 문구로 남아 있는 것으로 보이며, 실제 원문은
+    # 가격표가 아니라 F-017~F-022와 같은 업체명 전용 서식이므로 그 패턴을 따른다.
+    $wsF23 = $wbNew.Worksheets.Add(); $wsF23.Name = "F-023_교복제조사양서"; $ws = $wsF23
+    $ws.Range("B1:E1").Merge() | Out-Null; $ws.Range("B1").Value2 = "[검토용] 원본 HWPX [9-11] [서식 6] 대조. 업체명만 자동 반영하며 재질·설명 내용은 직접 작성합니다."; $ws.Range("B1").Font.Size = 7; $ws.Range("B1").Font.Color = 255; $ws.Range("B1").WrapText = $false
+    $ws.Range("G2").Value2 = "선택 업체 순번(자동, 인쇄 전용)"; $ws.Range("G2").Font.Size = 7; $ws.Range("G3").Value2 = 1
+    $ws.Range("B3:E4").Merge() | Out-Null; $ws.Range("B3").Value2 = "납품 교복 제조 사양서"; $ws.Range("B3").Font.Size = 15; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108; $ws.Range("B3").VerticalAlignment = -4108
+    $ws.Range("B5:E5").Merge() | Out-Null; $ws.Range("B5").Formula = '="(제안자: "&IFERROR(IF(INDEX(기초자료입력!$B$44:$B$53,$G$3)=0,"",INDEX(기초자료입력!$B$44:$B$53,$G$3)),"")&")"'; $ws.Range("B5").HorizontalAlignment = -4108
+    $ws.Range("B6:E6").Merge() | Out-Null; $ws.Range("B6").Value2 = "*서식은 입찰 업체 상황에 맞게 변경 사용 가능(사진 등 첨부 가능)"; $ws.Range("B6").Font.Size = 8; $ws.Range("B6").HorizontalAlignment = -4108
+    $ws.Range("B7:E7").Merge() | Out-Null; $ws.Range("B7").Value2 = "생활형 교복"; $ws.Range("B7").Font.Bold = $true
+    $ws.Range("B9").Value2 = "구분"; $ws.Range("C9").Value2 = "견본 품목"; $ws.Range("D9").Value2 = "재질"; $ws.Range("E9").Value2 = "설명 내용"
+    $ws.Range("B9:E9").Font.Bold = $true; $ws.Range("B9:E9").HorizontalAlignment = -4108; $ws.Range("B9:E9").VerticalAlignment = -4108; $ws.Range("B9:E9").WrapText = $true
+    $ws.Range("B10:B13").Merge() | Out-Null; $ws.Range("B10").Value2 = "동복"
+    $ws.Range("C10").Value2 = "후드 점퍼"; $ws.Range("C11").Value2 = "집업티"; $ws.Range("C12").Value2 = "맨투맨티"; $ws.Range("C13").Value2 = "긴바지"
+    $ws.Range("B14:B15").Merge() | Out-Null; $ws.Range("B14").Value2 = "하복"
+    $ws.Range("C14").Value2 = "반팔티"; $ws.Range("C15").Value2 = "반바지"
+    $ws.Range("B10:E15").HorizontalAlignment = -4108; $ws.Range("B10:B15,C10:C15").HorizontalAlignment = -4108
+    $ws.Range("B17:E17").Merge() | Out-Null; $ws.Range("B17").Value2 = "※ 국산섬유원단 사용 여부(한국섬유산업연합회 인증마크 획득) 등 상세히 기재"; $ws.Range("B17").Font.Size = 8; $ws.Range("B17").WrapText = $true
+    $ws.Range("B19:E19").Merge() | Out-Null; $ws.Range("B19").Formula = '=IF(기초자료입력!$C$5="","20○○.  .  .","20"&RIGHT(기초자료입력!$C$5,2)&".  .  .")'; $ws.Range("B19").HorizontalAlignment = -4108
+    $ws.Range("B20:E20").Merge() | Out-Null; $ws.Range("B20").Value2 = "제안자 성 명                         (서명 또는 날인)"; $ws.Range("B20").HorizontalAlignment = -4108
+    $ws.Range("B21:E21").Merge() | Out-Null; $ws.Range("B21").Formula = '=IF(기초자료입력!$C$4="","○○○○학교장 귀하",기초자료입력!$C$4&"장 귀하")'; $ws.Range("B21").HorizontalAlignment = -4108
+    $ws.Range("B3:E6,B7:E7,B9:E15,B17:E17,B19:E21").Borders.LineStyle = 1; $ws.Range("B3:E21").VerticalAlignment = -4108
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 10; $ws.Columns.Item("C").ColumnWidth = 16; $ws.Columns.Item("D").ColumnWidth = 16; $ws.Columns.Item("E").ColumnWidth = 24; $ws.Range("B3:E21").Font.Size = 10
+    $ws.Rows.Item(1).RowHeight = 12; $ws.Rows.Item(2).RowHeight = 8; $ws.Rows.Item(3).RowHeight = 24; $ws.Rows.Item(4).RowHeight = 24; $ws.Rows.Item(5).RowHeight = 20; $ws.Rows.Item(6).RowHeight = 16; $ws.Rows.Item(7).RowHeight = 18; $ws.Rows.Item(8).RowHeight = 6; $ws.Rows.Item(9).RowHeight = 22; for ($r = 10; $r -le 15; $r++) { $ws.Rows.Item($r).RowHeight = 22 }; $ws.Rows.Item(16).RowHeight = 6; $ws.Rows.Item(17).RowHeight = 20; $ws.Rows.Item(18).RowHeight = 8; $ws.Rows.Item(19).RowHeight = 18; $ws.Rows.Item(20).RowHeight = 18; $ws.Rows.Item(21).RowHeight = 18
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 0.8; $ps.BottomMargin = CmToPt 0.8; $ps.LeftMargin = CmToPt 1.0; $ps.RightMargin = CmToPt 1.0; $ps.HeaderMargin = CmToPt 0.3; $ps.FooterMargin = CmToPt 0.3; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$B`$1:`$E`$21"
+    L "F-023 원문 교복 제조 사양서 대조 레이아웃(동복 4행·하복 2행) 및 업체명만 반영·재질/설명 수기 경계 적용 완료"
+
+    # ---- 7l. F-025 교복 A/S 계획서 ----
+    # 원문 HWPX [9-14] [서식 8]을 대조한다. 표가 아닌 순수 텍스트 서식이며 업체명·회사명·상호를 표시하는
+    # 자리가 원문에 없다(F-021의 "회사명", F-022/F-023의 "(제안자: 업체명)"과 다름). 서명란은
+    # "제안자 성 명(서명 또는 날인)"과 "◯◯◯◯학교장 귀하"뿐이므로 학교 공통값(C-01·C-02)만 반영하고
+    # 나머지 전 항목(A/S 기간·편의성·지정업체·내용)은 F-017~F-023과 같이 업체가 직접 작성하는 빈 칸으로 유지한다.
+    # 서식_매핑표.md의 F-025 행은 F-026 행과 입력·출력 열이 완전히 동일해(비고만 다름) 복사 흔적으로 보이나,
+    # 출력 열이 R-03을 제외하고 C-01/C-02/B-01/D-02만 적은 것은 원문에 업체명 표시 자리가 없다는 사실과 결과적으로
+    # 부합한다. 업체별 제출 서류(F-021 첨부 목록 ④)이므로 F-017~F-023과 동일하게 업체 반복행 기준으로
+    # 업체별 임시 인쇄 시트를 생성하되, 업체명 텍스트 자체는 출력하지 않는다.
+    $wsF25 = $wbNew.Worksheets.Add(); $wsF25.Name = "F-025_교복AS계획서"; $ws = $wsF25
+    $ws.Range("B1:E1").Merge() | Out-Null; $ws.Range("B1").Value2 = "[검토용] 원본 HWPX [9-14] [서식 8] 대조. 원문에 업체명 표시 자리가 없어 반영하지 않으며 A/S 계획 전 항목은 직접 작성합니다."; $ws.Range("B1").Font.Size = 7; $ws.Range("B1").Font.Color = 255; $ws.Range("B1").WrapText = $false
+    $ws.Range("G2").Value2 = "선택 업체 순번(자동, 인쇄 전용)"; $ws.Range("G2").Font.Size = 7; $ws.Range("G3").Value2 = 1
+    $ws.Range("B3:E4").Merge() | Out-Null; $ws.Range("B3").Value2 = "교복 A/S 계획서"; $ws.Range("B3").Font.Size = 16; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108; $ws.Range("B3").VerticalAlignment = -4108
+    $ws.Range("B6:E6").Merge() | Out-Null; $ws.Range("B6").Value2 = "1. A/S 기간"; $ws.Range("B6").Font.Bold = $true
+    $ws.Range("B7:E7").Merge() | Out-Null; $ws.Range("B7").Value2 = "가. 무상 A/S 기간 (                부터                까지 )"; $ws.Range("B7").WrapText = $true
+    $ws.Range("B9:E9").Merge() | Out-Null; $ws.Range("B9").Value2 = "2. A/S 편의성"; $ws.Range("B9").Font.Bold = $true
+    $ws.Range("B10:E10").Merge() | Out-Null; $ws.Range("B10").Value2 = "가. 사업장 소재지 :"; $ws.Range("B10").WrapText = $true
+    $ws.Range("B11:E11").Merge() | Out-Null; $ws.Range("B11").Value2 = "나. 신속성 : A/S 완료까지 소요되는 기간 (                일)"; $ws.Range("B11").WrapText = $true
+    $ws.Range("B12:E12").Merge() | Out-Null; $ws.Range("B12").Value2 = "다. 출장 A/S 가능여부 : 가능한 경우 출장 A/S 최소 학생 수 기재 (                명)"; $ws.Range("B12").WrapText = $true
+    $ws.Range("B13:E13").Merge() | Out-Null; $ws.Range("B13").Value2 = "라. 택배 A/S 가능여부 : 가능한 경우 택배비용 무상/유상 기재 (                )"; $ws.Range("B13").WrapText = $true
+    $ws.Range("B15:E15").Merge() | Out-Null; $ws.Range("B15").Value2 = "3. A/S지정업체 (A/S지정업체가 별도 있을 경우 교복업체와 관계를 입증할 계약서 등 첨부)"; $ws.Range("B15").Font.Bold = $true; $ws.Range("B15").WrapText = $true
+    $ws.Range("B16:E16").Merge() | Out-Null; $ws.Range("B16").Value2 = "가. 주 소 :"; $ws.Range("B16").WrapText = $true
+    $ws.Range("B17:E17").Merge() | Out-Null; $ws.Range("B17").Value2 = "나. 연락처 :"; $ws.Range("B17").WrapText = $true
+    $ws.Range("B18:E18").Merge() | Out-Null; $ws.Range("B18").Value2 = "다. 거리접근성 : 학교와 A/S 수선점과의 거리 기재 (                km)"; $ws.Range("B18").WrapText = $true
+    $ws.Range("B20:E20").Merge() | Out-Null; $ws.Range("B20").Value2 = "4. A/S 내용"; $ws.Range("B20").Font.Bold = $true
+    $ws.Range("B21:E21").Merge() | Out-Null; $ws.Range("B21").Value2 = "가. 시설현황 : A/S관련 시설 및 수량 기재(재단기, 오버로크 등)"; $ws.Range("B21").WrapText = $true
+    $ws.Range("B22:E22").Merge() | Out-Null; $ws.Range("B22").Value2 = "나. 무상A/S 세부내용"; $ws.Range("B22").WrapText = $true
+    $ws.Range("B23:E24").Merge() | Out-Null; $ws.Range("B23").Value2 = "- 바지/치마 기장수선  - 품·허리수선  - 헤진부위수선  - 단추  - 지퍼  - 바느질 등 세부적 사항 기재"; $ws.Range("B23").WrapText = $true; $ws.Range("B23").VerticalAlignment = -4108
+    $ws.Range("B25:E25").Merge() | Out-Null; $ws.Range("B25").Value2 = "다. 유상A/S 세부내용"; $ws.Range("B25").WrapText = $true
+    $ws.Range("B26:E26").Merge() | Out-Null; $ws.Range("B26").Value2 = "-"
+    $ws.Range("B27:E27").Merge() | Out-Null; $ws.Range("B27").Value2 = "-"
+    $ws.Range("B29:E29").Merge() | Out-Null; $ws.Range("B29").Formula = '=IF(기초자료입력!$C$5="","20○○년   월   일","20"&RIGHT(기초자료입력!$C$5,2)&"년   월   일")'; $ws.Range("B29").HorizontalAlignment = -4108
+    $ws.Range("B30:E30").Merge() | Out-Null; $ws.Range("B30").Value2 = "제안자 성 명                         (서명 또는 날인)"; $ws.Range("B30").HorizontalAlignment = -4108
+    $ws.Range("B31:E31").Merge() | Out-Null; $ws.Range("B31").Formula = '=IF(기초자료입력!$C$4="","○○○○학교장 귀하",기초자료입력!$C$4&"장 귀하")'; $ws.Range("B31").HorizontalAlignment = -4108
+    $ws.Range("B3:E4,B6:E7,B9:E13,B15:E18,B20:E27,B29:E31").Borders.LineStyle = 1; $ws.Range("B3:E31").VerticalAlignment = -4108
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 20; $ws.Columns.Item("C").ColumnWidth = 20; $ws.Columns.Item("D").ColumnWidth = 20; $ws.Columns.Item("E").ColumnWidth = 20; $ws.Range("B3:E31").Font.Size = 10
+    $ws.Rows.Item(1).RowHeight = 12; $ws.Rows.Item(2).RowHeight = 8; $ws.Rows.Item(3).RowHeight = 26; $ws.Rows.Item(4).RowHeight = 26; $ws.Rows.Item(5).RowHeight = 6; $ws.Rows.Item(6).RowHeight = 18; $ws.Rows.Item(7).RowHeight = 20; $ws.Rows.Item(8).RowHeight = 6; $ws.Rows.Item(9).RowHeight = 18; for ($r = 10; $r -le 13; $r++) { $ws.Rows.Item($r).RowHeight = 20 }; $ws.Rows.Item(14).RowHeight = 6; $ws.Rows.Item(15).RowHeight = 26; $ws.Rows.Item(16).RowHeight = 18; $ws.Rows.Item(17).RowHeight = 18; $ws.Rows.Item(18).RowHeight = 20; $ws.Rows.Item(19).RowHeight = 6; $ws.Rows.Item(20).RowHeight = 18; $ws.Rows.Item(21).RowHeight = 20; $ws.Rows.Item(22).RowHeight = 18; $ws.Rows.Item(23).RowHeight = 22; $ws.Rows.Item(24).RowHeight = 22; $ws.Rows.Item(25).RowHeight = 18; $ws.Rows.Item(26).RowHeight = 18; $ws.Rows.Item(27).RowHeight = 18; $ws.Rows.Item(28).RowHeight = 8; $ws.Rows.Item(29).RowHeight = 18; $ws.Rows.Item(30).RowHeight = 18; $ws.Rows.Item(31).RowHeight = 18
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 0.8; $ps.BottomMargin = CmToPt 0.8; $ps.LeftMargin = CmToPt 1.0; $ps.RightMargin = CmToPt 1.0; $ps.HeaderMargin = CmToPt 0.3; $ps.FooterMargin = CmToPt 0.3; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$B`$1:`$E`$31"
+    L "F-025 원문 교복 A/S 계획서 대조 레이아웃(업체명 표시 없음, 학교 공통값만 반영) 및 전 항목 수기 경계 적용 완료"
+
     # ---- 8. 학교정보 (원본 공개 데이터 표본 복사 — 학생·학부모 개인정보 아님) ----
     $wsSchool = $wbNew.Worksheets.Add()
     $wsSchool.Name = "학교정보"
@@ -1056,6 +1172,9 @@ try {
     $wbNew.SaveAs($outPath, 52)  # 52 = xlOpenXMLWorkbookMacroEnabled (.xlsm)
     L "저장 완료: $outPath"
 
+} catch {
+    $buildFailure = $_
+    L "ERROR: $($_.Exception.Message)"
 } finally {
     if ($wbSrc) { $wbSrc.Close($false) }
     if ($wbNew) { $wbNew.Close($false) }
@@ -1077,3 +1196,4 @@ try {
 }
 
 [System.IO.File]::WriteAllText($logPath, $log.ToString(), [System.Text.UTF8Encoding]::new($false))
+if ($buildFailure) { throw $buildFailure }

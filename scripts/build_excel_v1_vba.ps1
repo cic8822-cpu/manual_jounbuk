@@ -1049,7 +1049,7 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
     ReDim tmp(1 To lastRow + 50)   ' 업체별 F-015~F-020 출력에 대비해 여유를 둠
     Dim cnt As Long
     cnt = 0
-    Dim skippedNotReady As Long, skippedDeferred As Long, skippedInvalidF024 As Long, skippedInvalidF014 As Long, skippedInvalidF015 As Long, skippedInvalidF016 As Long, skippedInvalidF017 As Long, skippedInvalidF018 As Long, skippedInvalidF019 As Long, skippedInvalidF020 As Long
+    Dim skippedNotReady As Long, skippedDeferred As Long, skippedInvalidF024 As Long, skippedInvalidF014 As Long, skippedInvalidF015 As Long, skippedInvalidF016 As Long, skippedInvalidF017 As Long, skippedInvalidF018 As Long, skippedInvalidF019 As Long, skippedInvalidF020 As Long, skippedInvalidF021 As Long, skippedInvalidF022 As Long, skippedInvalidF023 As Long, skippedInvalidF025 As Long
     skippedNotReady = 0
     skippedDeferred = 0
     skippedInvalidF024 = 0
@@ -1060,6 +1060,10 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
     skippedInvalidF018 = 0
     skippedInvalidF019 = 0
     skippedInvalidF020 = 0
+    skippedInvalidF021 = 0
+    skippedInvalidF022 = 0
+    skippedInvalidF023 = 0
+    skippedInvalidF025 = 0
 
     Dim r As Long
     For r = 5 To lastRow
@@ -1147,6 +1151,54 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
                             tmp(cnt) = F020임시시트생성(reportVendorRow - 43)
                         End If
                     Next reportVendorRow
+                End If
+            ElseIf wsSel.Cells(r, 2).Value = "F-021" Then
+                If Not 검증_F021출력가능() Then
+                    skippedInvalidF021 = skippedInvalidF021 + 1
+                Else
+                    Dim proposalVendorRow As Long
+                    For proposalVendorRow = 44 To 53
+                        If F021업체행완전한가(proposalVendorRow) Then
+                            cnt = cnt + 1
+                            tmp(cnt) = F021임시시트생성(proposalVendorRow - 43)
+                        End If
+                    Next proposalVendorRow
+                End If
+            ElseIf wsSel.Cells(r, 2).Value = "F-022" Then
+                If Not 검증_F022출력가능() Then
+                    skippedInvalidF022 = skippedInvalidF022 + 1
+                Else
+                    Dim performanceVendorRow As Long
+                    For performanceVendorRow = 44 To 53
+                        If F022업체행완전한가(performanceVendorRow) Then
+                            cnt = cnt + 1
+                            tmp(cnt) = F022임시시트생성(performanceVendorRow - 43)
+                        End If
+                    Next performanceVendorRow
+                End If
+            ElseIf wsSel.Cells(r, 2).Value = "F-023" Then
+                If Not 검증_F023출력가능() Then
+                    skippedInvalidF023 = skippedInvalidF023 + 1
+                Else
+                    Dim specVendorRow As Long
+                    For specVendorRow = 44 To 53
+                        If F023업체행완전한가(specVendorRow) Then
+                            cnt = cnt + 1
+                            tmp(cnt) = F023임시시트생성(specVendorRow - 43)
+                        End If
+                    Next specVendorRow
+                End If
+            ElseIf wsSel.Cells(r, 2).Value = "F-025" Then
+                If Not 검증_F025출력가능() Then
+                    skippedInvalidF025 = skippedInvalidF025 + 1
+                Else
+                    Dim asVendorRow As Long
+                    For asVendorRow = 44 To 53
+                        If F025업체행완전한가(asVendorRow) Then
+                            cnt = cnt + 1
+                            tmp(cnt) = F025임시시트생성(asVendorRow - 43)
+                        End If
+                    Next asVendorRow
                 End If
             ElseIf status = "Y" Then
                 cnt = cnt + 1
@@ -1251,6 +1303,38 @@ Public Function 검증_F020출력가능() As Boolean
     Next vendorRow
 End Function
 
+Public Function 검증_F021출력가능() As Boolean
+    Dim vendorRow As Long
+    If Not 검증_필수값검증() Then Exit Function
+    For vendorRow = 44 To 53
+        If F021업체행완전한가(vendorRow) Then 검증_F021출력가능 = True: Exit Function
+    Next vendorRow
+End Function
+
+Public Function 검증_F022출력가능() As Boolean
+    Dim vendorRow As Long
+    If Not 검증_필수값검증() Then Exit Function
+    For vendorRow = 44 To 53
+        If F022업체행완전한가(vendorRow) Then 검증_F022출력가능 = True: Exit Function
+    Next vendorRow
+End Function
+
+Public Function 검증_F023출력가능() As Boolean
+    Dim vendorRow As Long
+    If Not 검증_필수값검증() Then Exit Function
+    For vendorRow = 44 To 53
+        If F023업체행완전한가(vendorRow) Then 검증_F023출력가능 = True: Exit Function
+    Next vendorRow
+End Function
+
+Public Function 검증_F025출력가능() As Boolean
+    Dim vendorRow As Long
+    If Not 검증_필수값검증() Then Exit Function
+    For vendorRow = 44 To 53
+        If F025업체행완전한가(vendorRow) Then 검증_F025출력가능 = True: Exit Function
+    Next vendorRow
+End Function
+
 Private Function F015업체행완전한가(ByVal sourceRow As Long) As Boolean
     Dim wsIn As Worksheet
     Set wsIn = Sheets("기초자료입력")
@@ -1288,6 +1372,22 @@ End Function
 
 Private Function F020업체행완전한가(ByVal sourceRow As Long) As Boolean
     F020업체행완전한가 = Trim(Sheets("기초자료입력").Cells(sourceRow, 2).Value & "") <> ""
+End Function
+
+Private Function F021업체행완전한가(ByVal sourceRow As Long) As Boolean
+    F021업체행완전한가 = Trim(Sheets("기초자료입력").Cells(sourceRow, 2).Value & "") <> ""
+End Function
+
+Private Function F022업체행완전한가(ByVal sourceRow As Long) As Boolean
+    F022업체행완전한가 = Trim(Sheets("기초자료입력").Cells(sourceRow, 2).Value & "") <> ""
+End Function
+
+Private Function F023업체행완전한가(ByVal sourceRow As Long) As Boolean
+    F023업체행완전한가 = Trim(Sheets("기초자료입력").Cells(sourceRow, 2).Value & "") <> ""
+End Function
+
+Private Function F025업체행완전한가(ByVal sourceRow As Long) As Boolean
+    F025업체행완전한가 = Trim(Sheets("기초자료입력").Cells(sourceRow, 2).Value & "") <> ""
 End Function
 
 Private Function F015임시시트생성(ByVal vendorSlot As Long) As String
@@ -1350,12 +1450,52 @@ Private Function F020임시시트생성(ByVal vendorSlot As Long) As String
     F020임시시트생성 = wsTemp.Name
 End Function
 
+Private Function F021임시시트생성(ByVal vendorSlot As Long) As String
+    Dim wsF21 As Worksheet, wsTemp As Worksheet
+    Set wsF21 = Sheets("F-021_교복납품제안서")
+    wsF21.Copy After:=Sheets(Sheets.Count)
+    Set wsTemp = Sheets(Sheets.Count)
+    wsTemp.Name = "F021_임시_" & vendorSlot & "_" & Format(Now, "hhnnss")
+    wsTemp.Range("G3").Value = vendorSlot
+    F021임시시트생성 = wsTemp.Name
+End Function
+
+Private Function F022임시시트생성(ByVal vendorSlot As Long) As String
+    Dim wsF22 As Worksheet, wsTemp As Worksheet
+    Set wsF22 = Sheets("F-022_교복납품실적표")
+    wsF22.Copy After:=Sheets(Sheets.Count)
+    Set wsTemp = Sheets(Sheets.Count)
+    wsTemp.Name = "F022_임시_" & vendorSlot & "_" & Format(Now, "hhnnss")
+    wsTemp.Range("I3").Value = vendorSlot
+    F022임시시트생성 = wsTemp.Name
+End Function
+
+Private Function F023임시시트생성(ByVal vendorSlot As Long) As String
+    Dim wsF23 As Worksheet, wsTemp As Worksheet
+    Set wsF23 = Sheets("F-023_교복제조사양서")
+    wsF23.Copy After:=Sheets(Sheets.Count)
+    Set wsTemp = Sheets(Sheets.Count)
+    wsTemp.Name = "F023_임시_" & vendorSlot & "_" & Format(Now, "hhnnss")
+    wsTemp.Range("G3").Value = vendorSlot
+    F023임시시트생성 = wsTemp.Name
+End Function
+
+Private Function F025임시시트생성(ByVal vendorSlot As Long) As String
+    Dim wsF25 As Worksheet, wsTemp As Worksheet
+    Set wsF25 = Sheets("F-025_교복AS계획서")
+    wsF25.Copy After:=Sheets(Sheets.Count)
+    Set wsTemp = Sheets(Sheets.Count)
+    wsTemp.Name = "F025_임시_" & vendorSlot & "_" & Format(Now, "hhnnss")
+    wsTemp.Range("G3").Value = vendorSlot
+    F025임시시트생성 = wsTemp.Name
+End Function
+
 Private Sub F015임시시트정리(ByRef names() As String)
     Dim i As Long
     On Error Resume Next
     Application.DisplayAlerts = False
     For i = LBound(names) To UBound(names)
-        If Left(names(i), 5) = "F015_" Or Left(names(i), 5) = "F016_" Or Left(names(i), 5) = "F017_" Or Left(names(i), 5) = "F018_" Or Left(names(i), 5) = "F019_" Or Left(names(i), 5) = "F020_" Then Sheets(names(i)).Delete
+        If Left(names(i), 5) = "F015_" Or Left(names(i), 5) = "F016_" Or Left(names(i), 5) = "F017_" Or Left(names(i), 5) = "F018_" Or Left(names(i), 5) = "F019_" Or Left(names(i), 5) = "F020_" Or Left(names(i), 5) = "F021_" Or Left(names(i), 5) = "F022_" Or Left(names(i), 5) = "F023_" Or Left(names(i), 5) = "F025_" Then Sheets(names(i)).Delete
     Next i
     Application.DisplayAlerts = True
     On Error GoTo 0
