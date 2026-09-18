@@ -22,6 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Phase 검증 Hook 수동 실행**: `powershell -ExecutionPolicy Bypass -File .claude/hooks/verify-phase.ps1` (Write/Edit·TaskCompleted·Stop 시 `.claude/settings.json` Hook으로 자동 실행되며, `.claude/quality-gate.json`의 `activePhase`·`phaseTestIds`·`sourceHashes` 기준으로 체크리스트·테스트 상태·원본 해시를 검사해 미완료 시 완료 처리를 차단함.)
 - **원본 무결성 확인**: 원본 `.xlsm`·`.hwpx`의 SHA-256을 계산해 `.claude/quality-gate.json`의 `sourceHashes`와 대조함.
 - **Markdown 공백 오류 검사(Q-02 게이트)**: `git diff --check`
+- **단일 테스트 선택 실행 불가**: `verify_excel_v1.ps1`은 [test.md](test.md)의 골든 시나리오(E-01~E-06)와 회귀 검사를 하나의 Excel COM 세션·검증 사본 안에서 순서대로 모두 실행하는 단일 스크립트이며, 개별 시나리오만 골라 실행하는 옵션이나 파라미터는 없음. 특정 시나리오(예: E-03) 결과만 확인하려면 전체 스크립트를 실행한 뒤 [test.md](test.md)에서 해당 ID의 PASS/PARTIAL/NOT_RUN 행을 확인함.
 
 ## 아키텍처 개요
 
@@ -75,4 +76,5 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 |---|---|---|---|
 | 2026-09-15 | 교복구매 길라잡이 하네스 초기 구성 | `.claude/agents`, `.claude/skills`, `CLAUDE.md` | 서식 분석, HWPX 자동화, XLSM 구현, 품질 검증 역할을 분리하고 /goal 운영 기준을 등록함 |
 | 2026-09-16 | `/init` 재점검: 표준 헤더 추가, Excel 명령·생성 경로를 v1 활성 스크립트(`build_excel_v1_structure.ps1` 등)로 갱신, Phase/기능 상태 하드코딩 제거 | `CLAUDE.md` | `create_excel_mvp.ps1` 기반 구버전 명령이 실제 활성 경로와 달라져 있었고, 상태 서술이 `task.md`/`test.md`와 어긋날 위험이 있어 최신화함 |
+| 2026-09-17 | `/init` 재점검: 내용은 실제 저장소 상태(`task.md`/`test.md`/`quality-gate.json`, 스크립트 경로, 에이전트·스킬 구성)와 일치함을 확인. `verify_excel_v1.ps1`이 골든 시나리오를 개별 선택 실행할 수 없는 단일 스크립트라는 점만 보완 | `CLAUDE.md` | 향후 인스턴스가 "단일 테스트 실행" 방법을 찾다가 존재하지 않는 옵션을 가정하지 않도록 명시함 |
 | 2026-09-18 | `/init` 재점검: `CLAUDE.md`는 실제 스크립트·quality-gate 구성과 일치해 변경 없음. `AGENTS.md`의 "구현 Form ID: F-007, F-024만" 서술이 `test.md`(F-007·F-014~F-020·F-024 구현·검증 완료, 2026-09-17 기준)와 어긋나 있어 하드코딩을 제거하고 `test.md` 참조로 교체함 | `AGENTS.md` | Form ID 구현 상태가 자주 바뀌어 두 안내 파일 중 하나에만 최신화가 반영되면 어긋남이 재발하므로, `CLAUDE.md`가 이미 채택한 "상태 하드코딩 금지" 원칙을 `AGENTS.md`에도 동일 적용함 |
