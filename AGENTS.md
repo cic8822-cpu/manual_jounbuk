@@ -12,7 +12,7 @@
 ## 현재 구현 상태
 
 - 활성 단계는 `P3-01`이며, `P2-01`은 Form ID별 독립 HWPX 템플릿을 생성했으나 Kordoc `fill -j` 치환이 실패해 차단 상태임. HWPX 실제 치환은 독립 사본의 치환·재열기·한컴/PDF 검증이 모두 통과할 때만 수행함.
-- 클린룸 Excel 배포본은 [artifacts/excel](artifacts/excel)에 `교복구매_길라잡이_YYYYMMDD_vN.xlsm` 형식으로 저장함. 안전 빌드가 통과할 때마다 같은 날짜의 `vN`을 증가시켜 기존 통과본을 보존함. `F-007`, `F-024`만 대표 구현·검증되었고, 나머지 Form ID와 기준 XLSM의 모든 UI는 미구현임. `X-06`이 PASS가 되기 전 P3-01 완료로 보고하지 않음.
+- 클린룸 Excel 배포본은 [artifacts/excel](artifacts/excel)에 `교복구매_길라잡이_YYYYMMDD_vN.xlsm` 형식으로 저장함. 안전 빌드가 통과할 때마다 같은 날짜의 `vN`을 증가시켜 기존 통과본을 보존함. 구현·미구현 Form ID 목록은 자주 바뀌므로 이 파일에 하드코딩하지 않음 — 항상 [test.md](test.md)를 직접 확인함. `X-06`이 PASS가 되기 전 P3-01 완료로 보고하지 않음.
 - P5는 아직 구현하지 않음. 웹 UX는 절차 탐색 허브→단계 상세→관련 Form ID→입력·검증·출력 흐름으로 설계하며, 근거·최종 검토 안내와 접근성 기준을 [prd.md](prd.md) 및 `_workspace/05_web/학교행정업무길라잡이_웹판_UX_벤치마크.md`에서 관리함.
 - 기준 기능, 남은 범위 및 검증 결과는 [test.md](test.md), [체크리스트.md](체크리스트.md), [P3-01_Excel_MVP_설계검증.md](P3-01_Excel_MVP_설계검증.md)를 기준으로 판단함.
 

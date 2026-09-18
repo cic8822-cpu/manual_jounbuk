@@ -75,3 +75,4 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 |---|---|---|---|
 | 2026-09-15 | 교복구매 길라잡이 하네스 초기 구성 | `.claude/agents`, `.claude/skills`, `CLAUDE.md` | 서식 분석, HWPX 자동화, XLSM 구현, 품질 검증 역할을 분리하고 /goal 운영 기준을 등록함 |
 | 2026-09-16 | `/init` 재점검: 표준 헤더 추가, Excel 명령·생성 경로를 v1 활성 스크립트(`build_excel_v1_structure.ps1` 등)로 갱신, Phase/기능 상태 하드코딩 제거 | `CLAUDE.md` | `create_excel_mvp.ps1` 기반 구버전 명령이 실제 활성 경로와 달라져 있었고, 상태 서술이 `task.md`/`test.md`와 어긋날 위험이 있어 최신화함 |
+| 2026-09-18 | `/init` 재점검: `CLAUDE.md`는 실제 스크립트·quality-gate 구성과 일치해 변경 없음. `AGENTS.md`의 "구현 Form ID: F-007, F-024만" 서술이 `test.md`(F-007·F-014~F-020·F-024 구현·검증 완료, 2026-09-17 기준)와 어긋나 있어 하드코딩을 제거하고 `test.md` 참조로 교체함 | `AGENTS.md` | Form ID 구현 상태가 자주 바뀌어 두 안내 파일 중 하나에만 최신화가 반영되면 어긋남이 재발하므로, `CLAUDE.md`가 이미 채택한 "상태 하드코딩 금지" 원칙을 `AGENTS.md`에도 동일 적용함 |
