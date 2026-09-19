@@ -8,3 +8,6 @@ artifacts/excel/build.xlsm
 
 # verify-phase.ps1의 Stop 훅 반복 알림 억제용 세션 상태 파일(휘발성, Git 추적 대상 아님)
 .claude/.verify-phase-stop-state.json
+
+# verify_f007_source_preserving_template.ps1이 실행마다 재생성하는 골든 JSON 스크래치 출력
+_workspace/02_hwpx/P2-01/원본보존형_토큰검증/

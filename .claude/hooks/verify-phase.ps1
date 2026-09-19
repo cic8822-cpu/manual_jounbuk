@@ -5,6 +5,17 @@
 
 $ErrorActionPreference = 'Stop'
 
+function Get-Sha256([string]$Path) {
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    $stream = [IO.File]::OpenRead($Path)
+    try {
+        return ([BitConverter]::ToString($algorithm.ComputeHash($stream))).Replace('-', '')
+    } finally {
+        $stream.Dispose()
+        $algorithm.Dispose()
+    }
+}
+
 # TaskCompleted와 Stop이 거의 동시에 도착해도 Excel COM/PDF 통합 검증은 하나만 실행한다.
 # 정적 훅은 공유 자원을 잡지 않으므로 편집 중 구문·린트 검사는 계속 즉시 실행된다.
 $fullVerificationMutex = $null
@@ -148,7 +159,7 @@ if ($null -ne $gate) {
             $failures.Add("원본 무결성 검사 대상 누락: $($sourceHash.path)")
             continue
         }
-        $actualHash = (Microsoft.PowerShell.Utility\Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash
+        $actualHash = Get-Sha256 $sourcePath
         if ($actualHash -ne ([string]$sourceHash.sha256).ToUpperInvariant()) {
             $failures.Add("원본 SHA-256 불일치: $($sourceHash.path)")
         }

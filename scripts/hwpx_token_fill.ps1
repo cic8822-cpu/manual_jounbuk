@@ -175,7 +175,10 @@ try {
 if ([IO.File]::Exists($absoluteOutput)) {
     $backupOutput = $absoluteOutput + '.' + [guid]::NewGuid().ToString('N') + '.bak'
     [IO.File]::Replace($temporaryOutput, $absoluteOutput, $backupOutput)
-    if ([IO.File]::Exists($backupOutput)) { [IO.File]::Delete($backupOutput) }
+    if ([IO.File]::Exists($backupOutput)) {
+        try { [IO.File]::Delete($backupOutput) }
+        catch { Write-Warning "원자 교체는 완료됐지만 이전 결과 백업을 즉시 삭제하지 못했습니다. 나중에 정리할 수 있습니다: $backupOutput" }
+    }
 } else { [IO.File]::Move($temporaryOutput, $absoluteOutput) }
 
     Write-Output "PASS: HWPX 토큰 치환 완료 -> $absoluteOutput"

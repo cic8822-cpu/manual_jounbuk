@@ -93,9 +93,10 @@ try {
 
     # 4. 시트 목록
     L "시트 목록: $((@($wb.Worksheets) | ForEach-Object { $_.Name }) -join ', ')"
-    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', 'DB_업체', 'DB_위원', 'DB_평가', 'DB_정량평가', 'DB_정성평가', 'DB_자기평점', '서식선택_출력', 'F-001_위원회구성기안', 'F-002_위원수락확인서', 'F-003_위원청렴보안서약서', 'F-004_구매추진계획수립기안문', 'F-005_구매추진계획안', 'F-006_운영위원회심의안', 'F-007_구매요청기안문', 'F-014_평가항목배점기준', 'F-015_정량적평가', 'F-016_정성적평가', 'F-017_제출서류자기확인서', 'F-018_정량적평가자기평점표', 'F-019_입찰참가신청서', 'F-020_입찰참가신고서', 'F-021_교복납품제안서', 'F-022_교복납품실적표', 'F-023_교복제조사양서', 'F-024_단가비율표', 'F-025_교복AS계획서', 'F-032_제안서접수결과', 'F-033_제안서접수대장', 'F-034_평가위원회개최', 'F-035_정량평가결과', 'F-036_제안서평가결과', 'F-037_평가위원회참석등록부', 'F-038_업체참가등록부', 'F-039_업체별제안서평가표', 'F-040_위원청렴보안서약서', 'F-041_낙찰자결정', 'F-042_낙찰자결정통보', 'F-043_계약체결', '학교정보', '학교검색', '절차안내', '계약방법안내')
+    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', 'DB_업체', 'DB_위원', 'DB_평가', 'DB_정량평가', 'DB_정성평가', 'DB_자기평점', '서식선택_출력', 'F-001_위원회구성기안', 'F-002_위원수락확인서', 'F-003_위원청렴보안서약서', 'F-004_구매추진계획수립기안문', 'F-005_구매추진계획안', 'F-006_운영위원회심의안', 'F-007_구매요청기안문', 'F-014_평가항목배점기준', 'F-015_정량적평가', 'F-016_정성적평가', 'F-017_제출서류자기확인서', 'F-018_정량적평가자기평점표', 'F-019_입찰참가신청서', 'F-020_입찰참가신고서', 'F-021_교복납품제안서', 'F-022_교복납품실적표', 'F-023_교복제조사양서', 'F-024_단가비율표', 'F-025_교복AS계획서', 'F-032_제안서접수결과', 'F-033_제안서접수대장', 'F-034_평가위원회개최', 'F-035_정량평가결과', 'F-036_제안서평가결과', 'F-037_평가위원회참석등록부', 'F-038_업체참가등록부', 'F-039_업체별제안서평가표', 'F-040_위원청렴보안서약서', 'F-041_낙찰자결정', 'F-042_낙찰자결정통보', 'F-043_계약체결', 'F-044_사전안내가정통신문안내', '학교정보', '학교검색', '절차안내', '계약방법안내')
+    $requiredSheets += 'F-045_사전안내가정통신문'
     $sheetNames = @($wb.Worksheets | ForEach-Object { $_.Name })
-    Assert-Check ($sheetNames.Count -eq 46 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) 'F-032~F-036·F-039를 포함한 필수 46개 시트가 모두 존재함'
+    Assert-Check ($sheetNames.Count -eq 48 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) 'F-045를 포함한 필수 48개 시트가 모두 존재함'
     $wsProtectedDB = $wb.Worksheets.Item('DB')
     $wsProtectedItems = $wb.Worksheets.Item('DB_품목')
     $wsProtectedVendors = $wb.Worksheets.Item('DB_업체')
@@ -122,7 +123,7 @@ try {
     Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B5').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B6').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B7').Value2) -and $wsMethod.Buttons('btn계약방법반영').OnAction -eq '계약방법안내_기초자료반영') '계약방법안내가 빈 확인값으로 시작하며 반영 버튼이 존재함'
 
     # 5. A4 1쪽 자연 충족 재확인 (F-007, F-014, F-024)
-    foreach ($sn in @("F-001_위원회구성기안","F-002_위원수락확인서","F-003_위원청렴보안서약서","F-004_구매추진계획수립기안문","F-006_운영위원회심의안","F-007_구매요청기안문","F-014_평가항목배점기준","F-015_정량적평가","F-016_정성적평가","F-017_제출서류자기확인서","F-018_정량적평가자기평점표","F-019_입찰참가신청서","F-020_입찰참가신고서","F-021_교복납품제안서","F-022_교복납품실적표","F-023_교복제조사양서","F-024_단가비율표","F-025_교복AS계획서","F-032_제안서접수결과","F-033_제안서접수대장","F-034_평가위원회개최","F-035_정량평가결과","F-036_제안서평가결과","F-039_업체별제안서평가표","F-041_낙찰자결정","F-042_낙찰자결정통보","F-043_계약체결")) {
+    foreach ($sn in @("F-001_위원회구성기안","F-002_위원수락확인서","F-003_위원청렴보안서약서","F-004_구매추진계획수립기안문","F-006_운영위원회심의안","F-007_구매요청기안문","F-014_평가항목배점기준","F-015_정량적평가","F-016_정성적평가","F-017_제출서류자기확인서","F-018_정량적평가자기평점표","F-019_입찰참가신청서","F-020_입찰참가신고서","F-021_교복납품제안서","F-022_교복납품실적표","F-023_교복제조사양서","F-024_단가비율표","F-025_교복AS계획서","F-032_제안서접수결과","F-033_제안서접수대장","F-034_평가위원회개최","F-035_정량평가결과","F-036_제안서평가결과","F-039_업체별제안서평가표","F-041_낙찰자결정","F-042_낙찰자결정통보","F-043_계약체결","F-044_사전안내가정통신문안내")) {
         $ws = $wb.Worksheets.Item($sn)
         $hb = $ws.HPageBreaks.Count
         $vb = $ws.VPageBreaks.Count
@@ -440,6 +441,13 @@ try {
     $bodyTextF43 = ($wsF43.Range('B3:H37').Cells | ForEach-Object { [string]$_.Value2 }) -join ' '
     Assert-Check ($bodyTextF43 -notmatch '홍길동') 'F-043 본문 어디에도 대표자 실명 형태 문자열이 출력되지 않음'
 
+    $wsF44 = $wb.Worksheets.Item('F-044_사전안내가정통신문안내')
+    Assert-Check ($wsF44.Range('B3').Value2 -eq '신입생 교복구매 사전 안내 가정통신문 발송' -and $wsF44.Range('B7').Value2 -eq '수  신' -and $wsF44.Range('C7').Value2 -eq '내부결재(사업부서)' -and $wsF44.Range('B15').Value2 -eq '가. 대상:') 'F-044 원문 대조 제목·수신·대상 항목 라벨이 존재함'
+    Assert-Check ($wsF44.Range('G2').Value2 -eq '테스트초등학교' -and $wsF44.Range('C9').Value2 -eq '2026학년도 동복 학교주관구매 요청' -and $wsF44.Range('C15').Value2 -eq '2026학년도 예비 중1(예비 고1) 학생 및 학부모' -and $wsF44.Range('C16').Value2 -match '2026학년도 동복 구매 관련 교복 학교주관구매 참여 및 지원 방법' -and $wsF44.Range('B18').Value2 -match '교복구매 사전 안내 가정통신문 1부') 'F-044가 학교명·제목·학년도·구매명과 원문 안내 내용을 반영함'
+    Assert-Check ([bool]$excel.Run('검증_F044출력가능')) 'F-044 선택 출력이 공통 필수값이 있을 때 허용함'
+    $bodyTextF44 = ($wsF44.Range('B3:H25').Cells | ForEach-Object { [string]$_.Value2 }) -join ' '
+    Assert-Check ($bodyTextF44 -notmatch '홍길동' -and $bodyTextF44 -notmatch '010-') 'F-044가 학생·학부모 개인정보를 자동 출력하지 않음'
+
     $wsF16 = $wb.Worksheets.Item('F-016_정성적평가')
     Assert-Check ($wsF16.Range('B3').Value2 -eq '[9-5] [붙임 3_2] [2단계] 정성적 평가' -and $wsF16.Range('B8').Value2 -eq '구분' -and $wsF16.Range('C8').Value2 -eq '평가항목' -and $wsF16.Range('F8').Value2 -eq '평가점수') 'F-016 원문 대조 제목과 고정 배점표 머리글이 존재함'
     $wsF16.Range('I3').Value2 = 1
@@ -742,7 +750,7 @@ try {
     $lastRow = $wsSel.Cells.Item($wsSel.Rows.Count, 2).End(-4162).Row  # xlUp
     for ($r = 5; $r -le $lastRow; $r++) {
         $fid = $wsSel.Cells.Item($r, 2).Value2
-        if ($fid -eq "F-001" -or $fid -eq "F-002" -or $fid -eq "F-003" -or $fid -eq "F-004" -or $fid -eq "F-005" -or $fid -eq "F-006" -or $fid -eq "F-007" -or $fid -eq "F-014" -or $fid -eq "F-015" -or $fid -eq "F-016" -or $fid -eq "F-017" -or $fid -eq "F-018" -or $fid -eq "F-019" -or $fid -eq "F-020" -or $fid -eq "F-021" -or $fid -eq "F-022" -or $fid -eq "F-023" -or $fid -eq "F-024" -or $fid -eq "F-025" -or $fid -eq "F-032" -or $fid -eq "F-033" -or $fid -eq "F-034" -or $fid -eq "F-035" -or $fid -eq "F-036" -or $fid -eq "F-037" -or $fid -eq "F-038" -or $fid -eq "F-039" -or $fid -eq "F-040" -or $fid -eq "F-041" -or $fid -eq "F-042" -or $fid -eq "F-043") {
+        if ($fid -eq "F-001" -or $fid -eq "F-002" -or $fid -eq "F-003" -or $fid -eq "F-004" -or $fid -eq "F-005" -or $fid -eq "F-006" -or $fid -eq "F-007" -or $fid -eq "F-014" -or $fid -eq "F-015" -or $fid -eq "F-016" -or $fid -eq "F-017" -or $fid -eq "F-018" -or $fid -eq "F-019" -or $fid -eq "F-020" -or $fid -eq "F-021" -or $fid -eq "F-022" -or $fid -eq "F-023" -or $fid -eq "F-024" -or $fid -eq "F-025" -or $fid -eq "F-032" -or $fid -eq "F-033" -or $fid -eq "F-034" -or $fid -eq "F-035" -or $fid -eq "F-036" -or $fid -eq "F-037" -or $fid -eq "F-038" -or $fid -eq "F-039" -or $fid -eq "F-040" -or $fid -eq "F-041" -or $fid -eq "F-042" -or $fid -eq "F-043" -or $fid -eq "F-044") {
             $wsSel.Cells.Item($r, 1).Value2 = $true
         }
     }
