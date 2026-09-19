@@ -97,8 +97,9 @@ try {
     $requiredSheets += 'F-045_사전안내가정통신문'
     $requiredSheets += 'F-046_수요조사가정통신문안내'
     $requiredSheets += 'F-048_교복구매안내신청수량파악'
+    $requiredSheets += 'F-047_수요조사가정통신문'
     $sheetNames = @($wb.Worksheets | ForEach-Object { $_.Name })
-    Assert-Check ($sheetNames.Count -eq 50 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) 'F-048을 포함한 필수 50개 시트가 모두 존재함'
+    Assert-Check ($sheetNames.Count -eq 51 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) 'F-047을 포함한 필수 51개 시트가 모두 존재함'
     $wsProtectedDB = $wb.Worksheets.Item('DB')
     $wsProtectedItems = $wb.Worksheets.Item('DB_품목')
     $wsProtectedVendors = $wb.Worksheets.Item('DB_업체')
@@ -151,6 +152,14 @@ try {
     $zoomF48chk = $wsF48chk.PageSetup.Zoom
     L "F-048_교복구매안내신청수량파악 : Zoom=$zoomF48chk, HPageBreaks=$($wsF48chk.HPageBreaks.Count)(다중 페이지 허용, 예외), VPageBreaks=$vbF48chk"
     Assert-Check ($zoomF48chk -eq 100 -and $vbF48chk -eq 0 -and -not $wsF48chk.PageSetup.FitToPagesWide -and -not $wsF48chk.PageSetup.FitToPagesTall) 'F-048 자연 배율(강제 축소 없음)이며 가로 폭 초과가 없음(세로 다중 페이지는 안내문+신청서+표 결합 구성이라 허용된 예외)'
+
+    # 5c. F-047도 안내문+절취선+신청서 결합 구성이라 F-005·F-048과 같은 기준(VPageBreaks=0, 강제 축소
+    # 없음)으로 확인하며, 세로 다중 페이지는 허용된 예외로 둔다.
+    $wsF47chk = $wb.Worksheets.Item('F-047_수요조사가정통신문')
+    $vbF47chk = $wsF47chk.VPageBreaks.Count
+    $zoomF47chk = $wsF47chk.PageSetup.Zoom
+    L "F-047_수요조사가정통신문 : Zoom=$zoomF47chk, HPageBreaks=$($wsF47chk.HPageBreaks.Count)(다중 페이지 허용, 예외), VPageBreaks=$vbF47chk"
+    Assert-Check ($zoomF47chk -eq 100 -and $vbF47chk -eq 0 -and -not $wsF47chk.PageSetup.FitToPagesWide -and -not $wsF47chk.PageSetup.FitToPagesTall) 'F-047 자연 배율(강제 축소 없음)이며 가로 폭 초과가 없음(세로 다중 페이지는 안내문+신청서 결합 구성이라 허용된 예외)'
 
     # 6. 매크로 실행 테스트 (마스킹 테스트값 사용 — 실제 업체/개인정보 아님)
     $wsIn = $wb.Worksheets.Item("기초자료입력")
@@ -481,6 +490,15 @@ try {
     Assert-Check ([bool]$excel.Run('검증_F048출력가능')) 'F-048 선택 출력이 공통 필수값이 있을 때 허용함'
     $bodyTextF48 = ($wsF48.Range('B3:I45').Cells | ForEach-Object { [string]$_.Value2 }) -join ' '
     Assert-Check ($bodyTextF48 -notmatch '홍길동' -and $bodyTextF48 -notmatch '010-') 'F-048이 학생·학부모 개인정보를 자동 출력하지 않음'
+
+    $wsF47 = $wb.Worksheets.Item('F-047_수요조사가정통신문')
+    Assert-Check ($wsF47.Range('B3').Value2 -eq '2026학년도 동복 학교주관구매 요청' -and $wsF47.Range('B6').Value2 -match '테스트초등학교 입학을 진심으로 축하드립니다' -and $wsF47.Range('B29').Value2 -match '절 취 선' -and $wsF47.Range('B31').Value2 -eq '< 교복 구매 신청서 >') 'F-047 원문 대조 표제(D-02 우선 반영)·인사말·절취선·신청서 라벨이 존재함'
+    Assert-Check ($wsF47.Range('B17').Value2 -match '2026\.02\.20\.' -and $wsF47.Range('B27').Value2 -eq '테스트초등학교장') 'F-047이 제출기한(B-07)·학교장 공통값을 반영함'
+    Assert-Check ($wsF47.Range('B34').Value2 -match '학교주관 교복구매.*참여' -and $wsF47.Range('D34').Value2 -match '미참여' -and [string]::IsNullOrWhiteSpace([string]$wsF47.Range('B36').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF47.Range('D36').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF47.Range('F36').Value2)) 'F-047 참여/미참여 응답 표는 머리글만 있고 응답 셀 3칸은 전부 공란임(신청 여부 미수집)'
+    Assert-Check ($wsF47.Range('B40').Value2 -match '이름' -and $wsF47.Range('B41').Value2 -match '보호자 성명' -and $wsF47.Range('B39').Value2 -eq '년   월   일') 'F-047 이름·보호자 성명·전화번호 응답란은 빈 괄호 안내 문구만 있고 실제 값이 입력·저장되지 않음'
+    Assert-Check ([bool]$excel.Run('검증_F047출력가능')) 'F-047 선택 출력이 공통 필수값이 있을 때 허용함'
+    $bodyTextF47 = ($wsF47.Range('B3:H41').Cells | ForEach-Object { [string]$_.Value2 }) -join ' '
+    Assert-Check ($bodyTextF47 -notmatch '홍길동' -and $bodyTextF47 -notmatch '010-') 'F-047이 학생·학부모 개인정보를 자동 출력하지 않음'
 
     $wsF16 = $wb.Worksheets.Item('F-016_정성적평가')
     Assert-Check ($wsF16.Range('B3').Value2 -eq '[9-5] [붙임 3_2] [2단계] 정성적 평가' -and $wsF16.Range('B8').Value2 -eq '구분' -and $wsF16.Range('C8').Value2 -eq '평가항목' -and $wsF16.Range('F8').Value2 -eq '평가점수') 'F-016 원문 대조 제목과 고정 배점표 머리글이 존재함'
