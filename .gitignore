@@ -5,3 +5,6 @@ nul
 artifacts/excel/_validation*/
 artifacts/excel/output/
 artifacts/excel/build.xlsm
+
+# verify-phase.ps1의 Stop 훅 반복 알림 억제용 세션 상태 파일(휘발성, Git 추적 대상 아님)
+.claude/.verify-phase-stop-state.json

@@ -367,34 +367,55 @@ if ($null -eq $scriptAnalyzer) {
 
 # P3는 Markdown 상태만 PASS/DONE으로 바꿔서는 완료할 수 없다. 실제 XLSM 검증 스크립트가
 # 사본에서 Excel COM·PDF·수식·외부 의존성을 재검증해 0으로 종료해야 한다.
-if ($Mode -eq 'full' -and $null -ne $gate -and $gate.activePhase -eq 'P3-01') {
+if ($null -ne $gate -and $gate.activePhase -eq 'P3-01') {
     $excelVerifier = Join-Path $root 'scripts\\verify_excel_v1.ps1'
+    $excelVerifierLog = Join-Path $root '_workspace\\03_excel\\verify_v1_log.txt'
     if (Test-Path -LiteralPath $excelVerifier -PathType Leaf) {
-        $previousBuildPath = $env:UNIFORM_EXCEL_BUILD_PATH
-        $excelDirectory = Join-Path $root 'artifacts\excel'
-        $excelBaseName = -join [char[]](0xAD50, 0xBCF5, 0xAD6C, 0xB9E4, 0x005F, 0xAE38, 0xB77C, 0xC7A1, 0xC774)
-        $excelNamePattern = '^{0}_\d{{8}}_v\d+\.xlsm$' -f [regex]::Escape($excelBaseName)
-        $latestExcelFile = Get-ChildItem -LiteralPath $excelDirectory -File |
-            Where-Object { $_.Name -match $excelNamePattern } |
-            Sort-Object LastWriteTimeUtc -Descending |
-            Select-Object -First 1
-        if ($null -eq $latestExcelFile) {
-            $failures.Add('P3 이름_날짜_버전 형식의 Excel 배포본을 찾지 못함')
-        } else {
-            $env:UNIFORM_EXCEL_BUILD_PATH = $latestExcelFile.FullName
-            $excelVerifierOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $excelVerifier 2>&1
+        if ($Mode -eq 'full') {
+            $previousBuildPath = $env:UNIFORM_EXCEL_BUILD_PATH
+            $excelDirectory = Join-Path $root 'artifacts\excel'
+            $excelBaseName = -join [char[]](0xAD50, 0xBCF5, 0xAD6C, 0xB9E4, 0x005F, 0xAE38, 0xB77C, 0xC7A1, 0xC774)
+            $excelNamePattern = '^{0}_\d{{8}}_v\d+\.xlsm$' -f [regex]::Escape($excelBaseName)
+            $latestExcelFile = Get-ChildItem -LiteralPath $excelDirectory -File |
+                Where-Object { $_.Name -match $excelNamePattern } |
+                Sort-Object LastWriteTimeUtc -Descending |
+                Select-Object -First 1
+            if ($null -eq $latestExcelFile) {
+                $failures.Add('P3 이름_날짜_버전 형식의 Excel 배포본을 찾지 못함')
+            } else {
+                $env:UNIFORM_EXCEL_BUILD_PATH = $latestExcelFile.FullName
+                $excelVerifierOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $excelVerifier 2>&1
+            }
+            if ($null -eq $previousBuildPath) {
+                Remove-Item Env:UNIFORM_EXCEL_BUILD_PATH -ErrorAction SilentlyContinue
+            } else {
+                $env:UNIFORM_EXCEL_BUILD_PATH = $previousBuildPath
+            }
+            if ($null -ne $latestExcelFile -and $LASTEXITCODE -ne 0) {
+                $failures.Add("P3 실제 XLSM 검증 실패: $($excelVerifierOutput -join ' ')")
+            }
         }
-        if ($null -eq $previousBuildPath) {
-            Remove-Item Env:UNIFORM_EXCEL_BUILD_PATH -ErrorAction SilentlyContinue
-        } else {
-            $env:UNIFORM_EXCEL_BUILD_PATH = $previousBuildPath
-        }
-        if ($null -ne $latestExcelFile -and $LASTEXITCODE -ne 0) {
-            $failures.Add("P3 실제 XLSM 검증 실패: $($excelVerifierOutput -join ' ')")
-        }
-        $excelVerifierLog = Join-Path $root '_workspace\\03_excel\\verify_v1_log.txt'
-        if (-not (Test-Path -LiteralPath $excelVerifierLog -PathType Leaf) -or -not ((Get-Content -LiteralPath $excelVerifierLog -Raw -Encoding UTF8) -match 'PASS: Excel v1 검증 전체 통과')) {
+        # static 모드는 Excel COM을 재실행하지 않지만(30초 타임아웃 예산에 맞지 않음), 기록된
+        # PASS 로그가 현재 코드 상태를 실제로 반영하는지는 항상 확인한다. 이 확인이 없으면
+        # 담당자가 test.md를 수동으로 PASS 표기해도 훅이 완료를 막지 못하는 회귀가 생긴다
+        # (2026-09-19 code-reviewer 검토로 발견).
+        if (-not (Test-Path -LiteralPath $excelVerifierLog -PathType Leaf)) {
+            $failures.Add('P3 실제 XLSM 검증 로그를 찾지 못함(verify_v1_log.txt)')
+        } elseif (-not ((Get-Content -LiteralPath $excelVerifierLog -Raw -Encoding UTF8) -match 'PASS: Excel v1 검증 전체 통과')) {
             $failures.Add('P3 실제 XLSM 검증 로그에 최종 PASS 증빙이 없음')
+        } else {
+            $verifierLogTime = (Get-Item -LiteralPath $excelVerifierLog).LastWriteTimeUtc
+            $verifiedScriptNames = @('build_excel_v1_structure.ps1', 'build_excel_v1_vba.ps1', 'verify_excel_v1.ps1')
+            $staleScripts = @($verifiedScriptNames | ForEach-Object {
+                $scriptItem = Join-Path $root ('scripts\{0}' -f $_)
+                if (Test-Path -LiteralPath $scriptItem -PathType Leaf) {
+                    $scriptFileInfo = Get-Item -LiteralPath $scriptItem
+                    if ($scriptFileInfo.LastWriteTimeUtc -gt $verifierLogTime) { $scriptFileInfo.Name }
+                }
+            })
+            if ($staleScripts.Count -gt 0) {
+                $failures.Add("P3 실제 XLSM 검증 로그가 최신 스크립트 변경을 반영하지 못함(재실행 필요): $($staleScripts -join ', ')")
+            }
         }
     }
 }
@@ -426,11 +447,29 @@ try {
     Pop-Location
 }
 
+$stopStateFile = Join-Path $root '.claude\.verify-phase-stop-state.json'
+
 if ($failures.Count -gt 0) {
     if ($null -ne $fullVerificationMutex) { $fullVerificationMutex.ReleaseMutex(); $fullVerificationMutex.Dispose() }
-    [Console]::Error.WriteLine(('품질 게이트 미통과: ' + ($failures -join '; ') + '. 오류를 수정하고 검사 상태를 PASS로 갱신한 뒤 다시 검증해야 함.'))
+    $failureSignature = ($failures -join '; ')
+    $previousSignature = $null
+    if (Test-Path -LiteralPath $stopStateFile -PathType Leaf) {
+        try { $previousSignature = (Get-Content -LiteralPath $stopStateFile -Raw -Encoding UTF8 | ConvertFrom-Json).signature } catch { $previousSignature = $null }
+    }
+    $message = ('품질 게이트 미통과: ' + $failureSignature + '. 오류를 수정하고 검사 상태를 PASS로 갱신한 뒤 다시 검증해야 함.')
+    if ($failureSignature -eq $previousSignature) {
+        # 이미 한 번 알린 것과 똑같은 미완료 상태를 세션이 끝날 때마다 매번 다시 차단하면
+        # 백그라운드 작업이 실제로 끝날 때까지 세션을 정상적으로 멈출 수 없게 된다
+        # (2026-09-19 사용자가 반복 알림 중단을 명시적으로 요청해 추가). 실패 사유가 실제로
+        # 바뀌기 전까지는 정보성 안내만 남기고 차단하지 않는다.
+        [Console]::Error.WriteLine(('(이미 알린 동일 미완료 상태 — 반복 차단 생략) ' + $message))
+        exit 0
+    }
+    @{ signature = $failureSignature; timestampUtc = (Get-Date).ToUniversalTime().ToString('o') } | ConvertTo-Json -Compress | Set-Content -LiteralPath $stopStateFile -Encoding UTF8
+    [Console]::Error.WriteLine($message)
     exit 2
 }
 
 if ($null -ne $fullVerificationMutex) { $fullVerificationMutex.ReleaseMutex(); $fullVerificationMutex.Dispose() }
+if (Test-Path -LiteralPath $stopStateFile -PathType Leaf) { Remove-Item -LiteralPath $stopStateFile -Force -ErrorAction SilentlyContinue }
 exit 0

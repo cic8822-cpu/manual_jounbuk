@@ -93,9 +93,9 @@ try {
 
     # 4. 시트 목록
     L "시트 목록: $((@($wb.Worksheets) | ForEach-Object { $_.Name }) -join ', ')"
-    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', 'DB_업체', 'DB_위원', 'DB_평가', 'DB_정량평가', 'DB_정성평가', 'DB_자기평점', '서식선택_출력', 'F-001_위원회구성기안', 'F-002_위원수락확인서', 'F-003_위원청렴보안서약서', 'F-004_구매추진계획수립기안문', 'F-005_구매추진계획안', 'F-006_운영위원회심의안', 'F-007_구매요청기안문', 'F-014_평가항목배점기준', 'F-015_정량적평가', 'F-016_정성적평가', 'F-017_제출서류자기확인서', 'F-018_정량적평가자기평점표', 'F-019_입찰참가신청서', 'F-020_입찰참가신고서', 'F-021_교복납품제안서', 'F-022_교복납품실적표', 'F-023_교복제조사양서', 'F-024_단가비율표', 'F-025_교복AS계획서', 'F-032_제안서접수결과', 'F-033_제안서접수대장', 'F-034_평가위원회개최', 'F-037_평가위원회참석등록부', 'F-038_업체참가등록부', 'F-040_위원청렴보안서약서', 'F-041_낙찰자결정', 'F-042_낙찰자결정통보', 'F-043_계약체결', '학교정보', '학교검색', '절차안내', '계약방법안내')
+    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', 'DB_업체', 'DB_위원', 'DB_평가', 'DB_정량평가', 'DB_정성평가', 'DB_자기평점', '서식선택_출력', 'F-001_위원회구성기안', 'F-002_위원수락확인서', 'F-003_위원청렴보안서약서', 'F-004_구매추진계획수립기안문', 'F-005_구매추진계획안', 'F-006_운영위원회심의안', 'F-007_구매요청기안문', 'F-014_평가항목배점기준', 'F-015_정량적평가', 'F-016_정성적평가', 'F-017_제출서류자기확인서', 'F-018_정량적평가자기평점표', 'F-019_입찰참가신청서', 'F-020_입찰참가신고서', 'F-021_교복납품제안서', 'F-022_교복납품실적표', 'F-023_교복제조사양서', 'F-024_단가비율표', 'F-025_교복AS계획서', 'F-032_제안서접수결과', 'F-033_제안서접수대장', 'F-034_평가위원회개최', 'F-035_정량평가결과', 'F-036_제안서평가결과', 'F-037_평가위원회참석등록부', 'F-038_업체참가등록부', 'F-039_업체별제안서평가표', 'F-040_위원청렴보안서약서', 'F-041_낙찰자결정', 'F-042_낙찰자결정통보', 'F-043_계약체결', '학교정보', '학교검색', '절차안내', '계약방법안내')
     $sheetNames = @($wb.Worksheets | ForEach-Object { $_.Name })
-    Assert-Check ($sheetNames.Count -eq 43 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) 'F-032·F-033·F-034를 포함한 필수 43개 시트가 모두 존재함'
+    Assert-Check ($sheetNames.Count -eq 46 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) 'F-032~F-036·F-039를 포함한 필수 46개 시트가 모두 존재함'
     $wsProtectedDB = $wb.Worksheets.Item('DB')
     $wsProtectedItems = $wb.Worksheets.Item('DB_품목')
     $wsProtectedVendors = $wb.Worksheets.Item('DB_업체')
@@ -122,7 +122,7 @@ try {
     Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B5').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B6').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B7').Value2) -and $wsMethod.Buttons('btn계약방법반영').OnAction -eq '계약방법안내_기초자료반영') '계약방법안내가 빈 확인값으로 시작하며 반영 버튼이 존재함'
 
     # 5. A4 1쪽 자연 충족 재확인 (F-007, F-014, F-024)
-    foreach ($sn in @("F-001_위원회구성기안","F-002_위원수락확인서","F-003_위원청렴보안서약서","F-004_구매추진계획수립기안문","F-006_운영위원회심의안","F-007_구매요청기안문","F-014_평가항목배점기준","F-015_정량적평가","F-016_정성적평가","F-017_제출서류자기확인서","F-018_정량적평가자기평점표","F-019_입찰참가신청서","F-020_입찰참가신고서","F-021_교복납품제안서","F-022_교복납품실적표","F-023_교복제조사양서","F-024_단가비율표","F-025_교복AS계획서","F-032_제안서접수결과","F-033_제안서접수대장","F-034_평가위원회개최","F-041_낙찰자결정","F-042_낙찰자결정통보","F-043_계약체결")) {
+    foreach ($sn in @("F-001_위원회구성기안","F-002_위원수락확인서","F-003_위원청렴보안서약서","F-004_구매추진계획수립기안문","F-006_운영위원회심의안","F-007_구매요청기안문","F-014_평가항목배점기준","F-015_정량적평가","F-016_정성적평가","F-017_제출서류자기확인서","F-018_정량적평가자기평점표","F-019_입찰참가신청서","F-020_입찰참가신고서","F-021_교복납품제안서","F-022_교복납품실적표","F-023_교복제조사양서","F-024_단가비율표","F-025_교복AS계획서","F-032_제안서접수결과","F-033_제안서접수대장","F-034_평가위원회개최","F-035_정량평가결과","F-036_제안서평가결과","F-039_업체별제안서평가표","F-041_낙찰자결정","F-042_낙찰자결정통보","F-043_계약체결")) {
         $ws = $wb.Worksheets.Item($sn)
         $hb = $ws.HPageBreaks.Count
         $vb = $ws.VPageBreaks.Count
@@ -343,6 +343,20 @@ try {
     $wsIn.Range('C58').Value2 = '홍길동'; $excel.CalculateFullRebuild()
     Assert-Check (-not [bool]$excel.Run('검증_F034출력가능')) 'F-034 선택 출력이 실명 형태 위원 식별표시를 거부함'
     $wsIn.Range('C58').Value2 = '위원 ○○'
+
+    $wsF35 = $wb.Worksheets.Item('F-035_정량평가결과')
+    $excel.CalculateFullRebuild()
+    Assert-Check ($wsF35.Range('B3').Value2 -match '테스트초등학교' -and $wsF35.Range('C19').Value2 -eq '검증업체가' -and $wsF35.Range('C20').Value2 -eq '검증업체나' -and $wsF35.Range('H19').Value2 -eq 50) 'F-035 원문 대조 표에 업체 반복행과 학교 정량평가 합계(10+10+15+15=50, 앞서 입력한 골든 데이터 기준)가 F-015와 동일 산식으로 반영됨'
+    Assert-Check ([bool]$excel.Run('검증_F035출력가능')) 'F-035 선택 출력이 공통 필수값과 유효한 업체 반복행을 요구함'
+    $wsIn.Range('C44:F44').ClearContents(); $excel.CalculateFullRebuild()
+    Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsF35.Range('H19').Value2)) 'F-035 합계가 학교 정량평가 점수 미입력 시 0이 아닌 공란으로 표시됨(빈 셀 참조가 0으로 강제되지 않도록 소스 셀 공백을 직접 확인함)'
+    $wsIn.Range('C44').Value2 = 10; $wsIn.Range('D44').Value2 = 10; $wsIn.Range('E44').Value2 = 15; $wsIn.Range('F44').Value2 = 15
+    $excel.CalculateFullRebuild()
+
+    $wsF36 = $wb.Worksheets.Item('F-036_제안서평가결과')
+    $excel.CalculateFullRebuild()
+    Assert-Check ($wsF36.Range('B19').Value2 -eq '검증업체가' -and $wsF36.Range('C19').Value2 -eq 50 -and $wsF36.Range('D19').Value2 -eq 55 -and $wsF36.Range('E19').Value2 -eq 105 -and $wsF36.Range('F19').Value2 -eq '적격' -and $wsF36.Range('G19').Value2 -eq '가격개찰대상') 'F-036 정량(50)·정성(55) 합계·적부 판정(105점 → 적격)·비고가 골든 데이터 기준으로 정확히 계산됨'
+    Assert-Check ([bool]$excel.Run('검증_F036출력가능')) 'F-036 선택 출력이 공통 필수값과 유효한 업체 반복행을 요구함'
 
     $wsF37 = $wb.Worksheets.Item('F-037_평가위원회참석등록부')
     $excel.CalculateFullRebuild()
@@ -582,6 +596,37 @@ try {
     Assert-Check ($wsIn.Range('C44').Value2 -eq 10 -and $wsIn.Range('D44').Value2 -eq 10 -and $wsIn.Range('E44').Value2 -eq 15 -and $wsIn.Range('F44').Value2 -eq 15 -and $wsIn.Range('C45').Value2 -eq 6) '불러오기()가 F-015 업체별 정량평가 점수를 원래 행에 복원함'
     Assert-Check ($wsIn.Range('H44').Value2 -eq 15 -and $wsIn.Range('I44').Value2 -eq 10 -and $wsIn.Range('J44').Value2 -eq 15 -and $wsIn.Range('K44').Value2 -eq 10 -and $wsIn.Range('L44').Value2 -eq 5 -and $wsIn.Range('L45').Value2 -eq -2) '불러오기()가 F-016 업체별 정성평가 점수와 가감점을 원래 행에 복원함'
     Assert-Check ($wsIn.Range('N44').Value2 -eq 8 -and $wsIn.Range('O44').Value2 -eq 8 -and $wsIn.Range('P44').Value2 -eq 12 -and $wsIn.Range('Q44').Value2 -eq 15 -and $wsIn.Range('N45').Value2 -eq 10 -and $wsIn.Range('Q45').Value2 -eq 0) '불러오기()가 F-018 업체별 자기평점을 학교평가와 분리하여 원래 행에 복원함'
+
+    $wsF39 = $wb.Worksheets.Item('F-039_업체별제안서평가표')
+    $wsF39.Range('I3').Value2 = 1
+    $excel.CalculateFullRebuild()
+    Assert-Check ($wsF39.Range('C8').Value2 -eq '검증업체가' -and -not [bool]$excel.Run('검증_F039출력가능')) 'F-039가 I3 선택 업체명을 반영하고, 위원 8명 점수 미입력 시 선택 출력을 차단함'
+    $scoresF39 = @([double]15,[double]10,[double]15,[double]10, [double]12,[double]8,[double]12,[double]8, [double]15,[double]10,[double]15,[double]10, [double]3,[double]2,[double]3,[double]2, [double]9,[double]6,[double]9,[double]6, [double]12,[double]8,[double]12,[double]8, [double]15,[double]10,[double]15,[double]10, [double]6,[double]4,[double]6,[double]4)
+    # 2026-09-19 발견: 이 시트에서 .Range('E8').Value2 = <숫자>처럼 "주소 문자열로 얻은
+    # Range에 숫자를 대입"하면 PowerShell-COM 상호운용 계층에서 간헐적으로
+    # "InvalidCastException: Int32/Double을 String으로 캐스팅할 수 없습니다" 오류가 재현됨
+    # (원인 불명, 격리된 재현 스크립트로는 재현되지 않고 이 검증 스크립트의 누적 상태에서만
+    # 발생함). .Cells.Item(행,열).Value2 = <숫자> 형태는 매번 안정적으로 동작해 이 패턴으로
+    # 통일함(이 파일의 다른 대부분 코드가 이미 이 방식을 씀).
+    for ($rowIdx = 0; $rowIdx -lt 8; $rowIdx++) {
+        $rr = 8 + $rowIdx
+        $wsF39.Cells.Item($rr, 5).Value2 = [double]$scoresF39[$rowIdx * 4]
+        $wsF39.Cells.Item($rr, 6).Value2 = [double]$scoresF39[$rowIdx * 4 + 1]
+        $wsF39.Cells.Item($rr, 7).Value2 = [double]$scoresF39[$rowIdx * 4 + 2]
+        $wsF39.Cells.Item($rr, 8).Value2 = [double]$scoresF39[$rowIdx * 4 + 3]
+    }
+    $excel.CalculateFullRebuild()
+    Assert-Check ([bool]$excel.Run('검증_F039출력가능')) 'F-039가 위원 8명의 4개 항목 점수를 모두 입력하면 선택 출력을 허용함'
+    Assert-Check ($wsF39.Range('I8').Value2 -eq 50) 'F-039 행별 점수합계(옷감15+완성도10+A/S15+하자10=50)가 정확히 계산됨'
+    Assert-Check ($wsF39.Range('E16').Value2 -eq 69 -and $wsF39.Range('E17').Value2 -eq 11.5) 'F-039 옷감 항목 점수(15,12,15,3,9,12,15,6)의 총계가 최고점(15)·최저점(3) 제외 6명 합(69)이고 평균은 총계/6(11.5)임'
+    $wsF39.Range('D9').Value2 = '홍길동'
+    $bodyTextF39 = ($wsF39.Range('B7:J17').Cells | ForEach-Object { [string]$_.Value2 }) -join ' '
+    Assert-Check ($bodyTextF39 -notmatch '자동') 'F-039 위원명(D열)은 이 시트 어떤 수식으로도 자동 채워지지 않고 담당자가 직접 입력한 값만 남음(청탁방지·익명성 원칙)'
+    $wsF39.Range('D9').ClearContents()
+    $wsF39.Range('E8').ClearContents()
+    Assert-Check (-not [bool]$excel.Run('검증_F039출력가능')) 'F-039가 위원 점수 1칸만 비어도 선택 출력을 차단함'
+    $wsF39.Cells.Item(8, 5).Value2 = [double]$scoresF39[0]
+
     Assert-Check ($wsIn.Range('B58').Value2 -eq '교원위원' -and $wsIn.Range('C58').Value2 -eq '위원 ○○' -and $wsIn.Range('B59').Value2 -eq '학부모위원' -and $wsIn.Range('D82').Value2 -eq 98.5) '불러오기()가 위원·평가 반복행과 K-03 총점을 복원함'
     $wsIn.Range('C59').Value2 = '위원 ○*'
     $wsIn.Range('D73').Value2 = 59.5
@@ -697,7 +742,7 @@ try {
     $lastRow = $wsSel.Cells.Item($wsSel.Rows.Count, 2).End(-4162).Row  # xlUp
     for ($r = 5; $r -le $lastRow; $r++) {
         $fid = $wsSel.Cells.Item($r, 2).Value2
-        if ($fid -eq "F-001" -or $fid -eq "F-002" -or $fid -eq "F-003" -or $fid -eq "F-004" -or $fid -eq "F-005" -or $fid -eq "F-006" -or $fid -eq "F-007" -or $fid -eq "F-014" -or $fid -eq "F-015" -or $fid -eq "F-016" -or $fid -eq "F-017" -or $fid -eq "F-018" -or $fid -eq "F-019" -or $fid -eq "F-020" -or $fid -eq "F-021" -or $fid -eq "F-022" -or $fid -eq "F-023" -or $fid -eq "F-024" -or $fid -eq "F-025" -or $fid -eq "F-032" -or $fid -eq "F-033" -or $fid -eq "F-034" -or $fid -eq "F-037" -or $fid -eq "F-038" -or $fid -eq "F-040" -or $fid -eq "F-041" -or $fid -eq "F-042" -or $fid -eq "F-043") {
+        if ($fid -eq "F-001" -or $fid -eq "F-002" -or $fid -eq "F-003" -or $fid -eq "F-004" -or $fid -eq "F-005" -or $fid -eq "F-006" -or $fid -eq "F-007" -or $fid -eq "F-014" -or $fid -eq "F-015" -or $fid -eq "F-016" -or $fid -eq "F-017" -or $fid -eq "F-018" -or $fid -eq "F-019" -or $fid -eq "F-020" -or $fid -eq "F-021" -or $fid -eq "F-022" -or $fid -eq "F-023" -or $fid -eq "F-024" -or $fid -eq "F-025" -or $fid -eq "F-032" -or $fid -eq "F-033" -or $fid -eq "F-034" -or $fid -eq "F-035" -or $fid -eq "F-036" -or $fid -eq "F-037" -or $fid -eq "F-038" -or $fid -eq "F-039" -or $fid -eq "F-040" -or $fid -eq "F-041" -or $fid -eq "F-042" -or $fid -eq "F-043") {
             $wsSel.Cells.Item($r, 1).Value2 = $true
         }
     }

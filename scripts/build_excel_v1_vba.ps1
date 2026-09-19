@@ -1033,11 +1033,56 @@ End Sub
     $codeInput = $codeInput -replace "`r`n", "`r" -replace "`n", "`r"
     $modInput.CodeModule.AddFromString($codeInput)
     L "Module_기초자료 추가 완료 (줄 수: $($modInput.CodeModule.CountOfLines))"
+    try { $wb.Save(); L "DIAG_CHECKPOINT1_SAVE_OK" } catch { L "DIAG_CHECKPOINT1_SAVE_FAIL: $($_.Exception.Message)" }
 
     $modOutput = $vbproj.VBComponents.Add(1)
     $modOutput.Name = "Module_출력"
     $codeOutput = @'
 Option Explicit
+
+' 2026-09-19 진단: 이 프로시저가 Form ID마다 개별 skippedInvalidFxxx 카운터 변수와
+' 반복되는 "wsSel.Cells(r,2).Value = "F-XXX"" 비교, 그리고 그 변수들을 전부 나열한
+' 초장문 skipDetail 연결식·OR 조건식을 갖고 있어, Form ID를 추가할 때마다 이 프로시저
+' 하나의 컴파일 크기가 커지다가 VBA "프로시저가 너무 큼" 한계를 실제로 넘어 저장(컴파일)
+' 자체가 실패하는 사고가 재현됨(이분 탐색으로 확정). 재발 방지를 위해 카운터를 Dictionary
+' 하나로, "단순 단일 출력" 그룹(업체 반복 없이 검증 함수 1개만 통과하면 서식선택_출력의
+' F열 시트를 그대로 출력하는 F-001~006·014·024·032~043)의 20개 ElseIf 문자열 비교를
+' Select Case 조회 함수(단일출력검증함수명)로 옮겨 이 프로시저 자체의 크기를 줄인다.
+' 업체 반복 출력 그룹(F-015~023·025)의 동작 로직은 전혀 바꾸지 않았다(캐시된 fid 변수
+' 사용과 IncSkip 호출로만 치환).
+Private Sub IncSkip(ByRef d As Object, ByVal key As String)
+    If d.Exists(key) Then
+        d(key) = d(key) + 1
+    Else
+        d.Add key, 1
+    End If
+End Sub
+
+Private Function 단일출력검증함수명(ByVal fid As String) As String
+    Select Case fid
+        Case "F-001": 단일출력검증함수명 = "검증_F001출력가능"
+        Case "F-002": 단일출력검증함수명 = "검증_F002출력가능"
+        Case "F-003": 단일출력검증함수명 = "검증_F003출력가능"
+        Case "F-004": 단일출력검증함수명 = "검증_F004출력가능"
+        Case "F-005": 단일출력검증함수명 = "검증_F005출력가능"
+        Case "F-006": 단일출력검증함수명 = "검증_F006출력가능"
+        Case "F-014": 단일출력검증함수명 = "검증_F014출력가능"
+        Case "F-024": 단일출력검증함수명 = "검증_F024출력가능"
+        Case "F-032": 단일출력검증함수명 = "검증_F032출력가능"
+        Case "F-033": 단일출력검증함수명 = "검증_F033출력가능"
+        Case "F-034": 단일출력검증함수명 = "검증_F034출력가능"
+        Case "F-035": 단일출력검증함수명 = "검증_F035출력가능"
+        Case "F-036": 단일출력검증함수명 = "검증_F036출력가능"
+        Case "F-037": 단일출력검증함수명 = "검증_F037출력가능"
+        Case "F-038": 단일출력검증함수명 = "검증_F038출력가능"
+        Case "F-039": 단일출력검증함수명 = "검증_F039출력가능"
+        Case "F-040": 단일출력검증함수명 = "검증_F040출력가능"
+        Case "F-041": 단일출력검증함수명 = "검증_F041출력가능"
+        Case "F-042": 단일출력검증함수명 = "검증_F042출력가능"
+        Case "F-043": 단일출력검증함수명 = "검증_F043출력가능"
+        Case Else: 단일출력검증함수명 = ""
+    End Select
+End Function
 
 Private Function 선택된시트목록(ByRef outNames() As String) As Long
     Dim wsSel As Worksheet
@@ -1049,62 +1094,29 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
     ReDim tmp(1 To lastRow + 50)   ' 업체별 F-015~F-020 출력에 대비해 여유를 둠
     Dim cnt As Long
     cnt = 0
-    Dim skippedNotReady As Long, skippedDeferred As Long, skippedInvalidF024 As Long, skippedInvalidF014 As Long, skippedInvalidF015 As Long, skippedInvalidF016 As Long, skippedInvalidF017 As Long, skippedInvalidF018 As Long, skippedInvalidF019 As Long, skippedInvalidF020 As Long, skippedInvalidF021 As Long, skippedInvalidF022 As Long, skippedInvalidF023 As Long, skippedInvalidF025 As Long, skippedInvalidF001 As Long, skippedInvalidF002 As Long, skippedInvalidF003 As Long, skippedInvalidF004 As Long, skippedInvalidF005 As Long, skippedInvalidF006 As Long
-    skippedNotReady = 0
-    skippedDeferred = 0
-    skippedInvalidF024 = 0
-    skippedInvalidF014 = 0
-    skippedInvalidF015 = 0
-    skippedInvalidF016 = 0
-    skippedInvalidF017 = 0
-    skippedInvalidF018 = 0
-    skippedInvalidF019 = 0
-    skippedInvalidF020 = 0
-    skippedInvalidF021 = 0
-    skippedInvalidF022 = 0
-    skippedInvalidF023 = 0
-    skippedInvalidF025 = 0
-    skippedInvalidF001 = 0
-    skippedInvalidF002 = 0
-    skippedInvalidF003 = 0
-    skippedInvalidF004 = 0
-    skippedInvalidF005 = 0
-    skippedInvalidF006 = 0
-    Dim skippedInvalidF032 As Long, skippedInvalidF033 As Long, skippedInvalidF034 As Long, skippedInvalidF037 As Long, skippedInvalidF038 As Long, skippedInvalidF040 As Long, skippedInvalidF041 As Long, skippedInvalidF042 As Long, skippedInvalidF043 As Long
-    skippedInvalidF032 = 0
-    skippedInvalidF033 = 0
-    skippedInvalidF034 = 0
-    skippedInvalidF037 = 0
-    skippedInvalidF038 = 0
-    skippedInvalidF040 = 0
-    skippedInvalidF041 = 0
-    skippedInvalidF042 = 0
-    skippedInvalidF043 = 0
+    Dim skipCounts As Object
+    Set skipCounts = CreateObject("Scripting.Dictionary")
 
     Dim r As Long
     For r = 5 To lastRow
         If wsSel.Cells(r, 1).Value = True Then
-            Dim status As String
+            Dim status As String, fid As String
             status = wsSel.Cells(r, 5).Value
-            If wsSel.Cells(r, 2).Value = "F-024" And Not 검증_F024출력가능() Then
-                skippedInvalidF024 = skippedInvalidF024 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-001" And Not 검증_F001출력가능() Then
-                skippedInvalidF001 = skippedInvalidF001 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-002" And Not 검증_F002출력가능() Then
-                skippedInvalidF002 = skippedInvalidF002 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-003" And Not 검증_F003출력가능() Then
-                skippedInvalidF003 = skippedInvalidF003 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-004" And Not 검증_F004출력가능() Then
-                skippedInvalidF004 = skippedInvalidF004 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-005" And Not 검증_F005출력가능() Then
-                skippedInvalidF005 = skippedInvalidF005 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-006" And Not 검증_F006출력가능() Then
-                skippedInvalidF006 = skippedInvalidF006 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-014" And Not 검증_F014출력가능() Then
-                skippedInvalidF014 = skippedInvalidF014 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-015" Then
+            fid = wsSel.Cells(r, 2).Value
+
+            Dim simpleValidator As String
+            simpleValidator = 단일출력검증함수명(fid)
+
+            If simpleValidator <> "" Then
+                If CBool(Application.Run(simpleValidator)) Then
+                    cnt = cnt + 1
+                    tmp(cnt) = wsSel.Cells(r, 6).Value
+                Else
+                    IncSkip skipCounts, fid
+                End If
+            ElseIf fid = "F-015" Then
                 If Not 검증_F015출력가능() Then
-                    skippedInvalidF015 = skippedInvalidF015 + 1
+                    IncSkip skipCounts, fid
                 Else
                     Dim vendorRow As Long, addedAny As Boolean
                     addedAny = False
@@ -1115,11 +1127,11 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
                             addedAny = True
                         End If
                     Next vendorRow
-                    If Not addedAny Then skippedInvalidF015 = skippedInvalidF015 + 1
+                    If Not addedAny Then IncSkip skipCounts, fid
                 End If
-            ElseIf wsSel.Cells(r, 2).Value = "F-016" Then
+            ElseIf fid = "F-016" Then
                 If Not 검증_F016출력가능() Then
-                    skippedInvalidF016 = skippedInvalidF016 + 1
+                    IncSkip skipCounts, fid
                 Else
                     Dim qualitativeVendorRow As Long, addedQualitative As Boolean
                     addedQualitative = False
@@ -1130,11 +1142,11 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
                             addedQualitative = True
                         End If
                     Next qualitativeVendorRow
-                    If Not addedQualitative Then skippedInvalidF016 = skippedInvalidF016 + 1
+                    If Not addedQualitative Then IncSkip skipCounts, fid
                 End If
-            ElseIf wsSel.Cells(r, 2).Value = "F-017" Then
+            ElseIf fid = "F-017" Then
                 If Not 검증_F017출력가능() Then
-                    skippedInvalidF017 = skippedInvalidF017 + 1
+                    IncSkip skipCounts, fid
                 Else
                     Dim confirmationVendorRow As Long
                     For confirmationVendorRow = 44 To 53
@@ -1144,9 +1156,9 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
                         End If
                     Next confirmationVendorRow
                 End If
-            ElseIf wsSel.Cells(r, 2).Value = "F-018" Then
+            ElseIf fid = "F-018" Then
                 If Not 검증_F018출력가능() Then
-                    skippedInvalidF018 = skippedInvalidF018 + 1
+                    IncSkip skipCounts, fid
                 Else
                     Dim selfVendorRow As Long
                     For selfVendorRow = 44 To 53
@@ -1156,9 +1168,9 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
                         End If
                     Next selfVendorRow
                 End If
-            ElseIf wsSel.Cells(r, 2).Value = "F-019" Then
+            ElseIf fid = "F-019" Then
                 If Not 검증_F019출력가능() Then
-                    skippedInvalidF019 = skippedInvalidF019 + 1
+                    IncSkip skipCounts, fid
                 Else
                     Dim applicationVendorRow As Long
                     For applicationVendorRow = 44 To 53
@@ -1168,9 +1180,9 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
                         End If
                     Next applicationVendorRow
                 End If
-            ElseIf wsSel.Cells(r, 2).Value = "F-020" Then
+            ElseIf fid = "F-020" Then
                 If Not 검증_F020출력가능() Then
-                    skippedInvalidF020 = skippedInvalidF020 + 1
+                    IncSkip skipCounts, fid
                 Else
                     Dim reportVendorRow As Long
                     For reportVendorRow = 44 To 53
@@ -1180,9 +1192,9 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
                         End If
                     Next reportVendorRow
                 End If
-            ElseIf wsSel.Cells(r, 2).Value = "F-021" Then
+            ElseIf fid = "F-021" Then
                 If Not 검증_F021출력가능() Then
-                    skippedInvalidF021 = skippedInvalidF021 + 1
+                    IncSkip skipCounts, fid
                 Else
                     Dim proposalVendorRow As Long
                     For proposalVendorRow = 44 To 53
@@ -1192,9 +1204,9 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
                         End If
                     Next proposalVendorRow
                 End If
-            ElseIf wsSel.Cells(r, 2).Value = "F-022" Then
+            ElseIf fid = "F-022" Then
                 If Not 검증_F022출력가능() Then
-                    skippedInvalidF022 = skippedInvalidF022 + 1
+                    IncSkip skipCounts, fid
                 Else
                     Dim performanceVendorRow As Long
                     For performanceVendorRow = 44 To 53
@@ -1204,9 +1216,9 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
                         End If
                     Next performanceVendorRow
                 End If
-            ElseIf wsSel.Cells(r, 2).Value = "F-023" Then
+            ElseIf fid = "F-023" Then
                 If Not 검증_F023출력가능() Then
-                    skippedInvalidF023 = skippedInvalidF023 + 1
+                    IncSkip skipCounts, fid
                 Else
                     Dim specVendorRow As Long
                     For specVendorRow = 44 To 53
@@ -1216,9 +1228,9 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
                         End If
                     Next specVendorRow
                 End If
-            ElseIf wsSel.Cells(r, 2).Value = "F-025" Then
+            ElseIf fid = "F-025" Then
                 If Not 검증_F025출력가능() Then
-                    skippedInvalidF025 = skippedInvalidF025 + 1
+                    IncSkip skipCounts, fid
                 Else
                     Dim asVendorRow As Long
                     For asVendorRow = 44 To 53
@@ -1228,45 +1240,33 @@ Private Function 선택된시트목록(ByRef outNames() As String) As Long
                         End If
                     Next asVendorRow
                 End If
-            ElseIf wsSel.Cells(r, 2).Value = "F-032" And Not 검증_F032출력가능() Then
-                skippedInvalidF032 = skippedInvalidF032 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-033" And Not 검증_F033출력가능() Then
-                skippedInvalidF033 = skippedInvalidF033 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-034" And Not 검증_F034출력가능() Then
-                skippedInvalidF034 = skippedInvalidF034 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-037" And Not 검증_F037출력가능() Then
-                skippedInvalidF037 = skippedInvalidF037 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-038" And Not 검증_F038출력가능() Then
-                skippedInvalidF038 = skippedInvalidF038 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-040" And Not 검증_F040출력가능() Then
-                skippedInvalidF040 = skippedInvalidF040 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-041" And Not 검증_F041출력가능() Then
-                skippedInvalidF041 = skippedInvalidF041 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-042" And Not 검증_F042출력가능() Then
-                skippedInvalidF042 = skippedInvalidF042 + 1
-            ElseIf wsSel.Cells(r, 2).Value = "F-043" And Not 검증_F043출력가능() Then
-                skippedInvalidF043 = skippedInvalidF043 + 1
             ElseIf status = "Y" Then
                 cnt = cnt + 1
                 tmp(cnt) = wsSel.Cells(r, 6).Value
             ElseIf status = "D" Then
-                skippedDeferred = skippedDeferred + 1
+                IncSkip skipCounts, "HWPX 우선순위 위임"
             Else
-                skippedNotReady = skippedNotReady + 1
+                IncSkip skipCounts, "미구현"
             End If
         End If
     Next r
 
+    Dim skipDetail As String
+    skipDetail = ""
+    Dim skipKey As Variant
+    For Each skipKey In skipCounts.Keys
+        skipDetail = skipDetail & skipKey & " 제외: " & skipCounts(skipKey) & "건, "
+    Next skipKey
+    If Len(skipDetail) >= 2 Then skipDetail = Left(skipDetail, Len(skipDetail) - 2)
+
     If cnt = 0 Then
-        MsgBox "구현된 서식이 선택되지 않았습니다." & vbCrLf & _
-             "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-032 업체 입력 오류: " & skippedInvalidF032 & "건, F-033 업체 입력 오류: " & skippedInvalidF033 & "건, F-034 위원행 오류: " & skippedInvalidF034 & "건, F-037 위원행 오류: " & skippedInvalidF037 & "건, F-038 업체 입력 오류: " & skippedInvalidF038 & "건, F-040 필수값 오류: " & skippedInvalidF040 & "건, F-001 필수값·위원행 오류: " & skippedInvalidF001 & "건, F-014 필수값·평가행 오류: " & skippedInvalidF014 & "건, F-015 업체·정량평가 오류: " & skippedInvalidF015 & "건, F-016 업체·정성평가 오류: " & skippedInvalidF016 & "건, F-017 업체 입력 오류: " & skippedInvalidF017 & "건, F-018 업체 자기평점 오류: " & skippedInvalidF018 & "건, F-019 업체 입력 오류: " & skippedInvalidF019 & "건, F-020 업체 입력 오류: " & skippedInvalidF020 & "건, F-024 입력 오류·빈 품목·6품목 초과: " & skippedInvalidF024 & "건, F-041 낙찰 업체 미선택: " & skippedInvalidF041 & "건, F-042 낙찰 업체 미선택: " & skippedInvalidF042 & "건, F-043 계약상대자 미선택: " & skippedInvalidF043 & "건", vbExclamation
+        MsgBox "구현된 서식이 선택되지 않았습니다." & vbCrLf & skipDetail, vbExclamation
         선택된시트목록 = 0
         Exit Function
     End If
 
-    If skippedNotReady > 0 Or skippedDeferred > 0 Or skippedInvalidF024 > 0 Or skippedInvalidF001 > 0 Or skippedInvalidF002 > 0 Or skippedInvalidF003 > 0 Or skippedInvalidF014 > 0 Or skippedInvalidF015 > 0 Or skippedInvalidF016 > 0 Or skippedInvalidF017 > 0 Or skippedInvalidF018 > 0 Or skippedInvalidF019 > 0 Or skippedInvalidF020 > 0 Or skippedInvalidF032 > 0 Or skippedInvalidF033 > 0 Or skippedInvalidF034 > 0 Or skippedInvalidF037 > 0 Or skippedInvalidF038 > 0 Or skippedInvalidF040 > 0 Or skippedInvalidF041 > 0 Or skippedInvalidF042 > 0 Or skippedInvalidF043 > 0 Then
-        MsgBox "일부 선택 서식은 아직 준비되지 않아 제외합니다." & vbCrLf & _
-               "미구현: " & skippedNotReady & "건, HWPX 우선순위 위임: " & skippedDeferred & "건, F-032 업체 입력 오류: " & skippedInvalidF032 & "건, F-033 업체 입력 오류: " & skippedInvalidF033 & "건, F-034 위원행 오류: " & skippedInvalidF034 & "건, F-037 위원행 오류: " & skippedInvalidF037 & "건, F-038 업체 입력 오류: " & skippedInvalidF038 & "건, F-040 필수값 오류: " & skippedInvalidF040 & "건, F-001 필수값·위원행 오류: " & skippedInvalidF001 & "건, F-014 필수값·평가행 오류: " & skippedInvalidF014 & "건, F-015 업체·정량평가 오류: " & skippedInvalidF015 & "건, F-016 업체·정성평가 오류: " & skippedInvalidF016 & "건, F-017 업체 입력 오류: " & skippedInvalidF017 & "건, F-018 업체 자기평점 오류: " & skippedInvalidF018 & "건, F-019 업체 입력 오류: " & skippedInvalidF019 & "건, F-020 업체 입력 오류: " & skippedInvalidF020 & "건, F-024 입력 오류·빈 품목·6품목 초과: " & skippedInvalidF024 & "건, F-041 낙찰 업체 미선택: " & skippedInvalidF041 & "건, F-042 낙찰 업체 미선택: " & skippedInvalidF042 & "건, F-043 계약상대자 미선택: " & skippedInvalidF043 & "건", vbInformation
+    If skipCounts.Count > 0 Then
+        MsgBox "일부 선택 서식은 아직 준비되지 않아 제외합니다." & vbCrLf & skipDetail, vbInformation
     End If
 
     ReDim outNames(1 To cnt)
@@ -1466,6 +1466,26 @@ Public Function 검증_F038출력가능() As Boolean
     검증_F038출력가능 = 검증_필수값검증() And 검증_업체행검증() And vendorCount >= 1
 End Function
 
+' F-039는 F-041~F-043과 같은 I3 단일 업체 선택 패턴을 재사용한다(업체 반복 루프 없음).
+' 위원별 원점수(옷감·완성도·A/S·하자)는 이 문서 전용 입력칸(E8:H15)이며 다른 서식과
+' 공유하는 DB가 아니다. 위원 성명(D열)은 청탁방지·익명성 원칙에 따라 자동 반영하지 않고
+' 자필 공란으로 유지하므로 검증 대상에서 제외한다. 총계·평균은 원문의 "위원별 평가 점수
+' 중 최고점 및 최저점을 제외" 안내에 따라 8명 점수 중 최댓값·최솟값을 뺀 뒤 합산·평균한다.
+Public Function 검증_F039출력가능() As Boolean
+    With Sheets("F-039_업체별제안서평가표")
+        Dim ok As Boolean
+        ok = 검증_필수값검증() And 낙찰업체선택완전한가("F-039_업체별제안서평가표")
+        If ok Then
+            ok = Application.WorksheetFunction.Count(.Range("E8:H15")) = 32 And _
+                Application.WorksheetFunction.Min(.Range("E8:E15")) >= 0 And Application.WorksheetFunction.Max(.Range("E8:E15")) <= 15 And _
+                Application.WorksheetFunction.Min(.Range("F8:F15")) >= 0 And Application.WorksheetFunction.Max(.Range("F8:F15")) <= 10 And _
+                Application.WorksheetFunction.Min(.Range("G8:G15")) >= 0 And Application.WorksheetFunction.Max(.Range("G8:G15")) <= 15 And _
+                Application.WorksheetFunction.Min(.Range("H8:H15")) >= 0 And Application.WorksheetFunction.Max(.Range("H8:H15")) <= 10
+        End If
+        검증_F039출력가능 = ok
+    End With
+End Function
+
 Public Function 검증_F040출력가능() As Boolean
     검증_F040출력가능 = 검증_필수값검증()
 End Function
@@ -1486,6 +1506,22 @@ Public Function 검증_F034출력가능() As Boolean
     Dim committeeCount As Long
     committeeCount = Application.WorksheetFunction.CountA(Sheets("기초자료입력").Range("B58:B67"))
     검증_F034출력가능 = 검증_필수값검증() And 검증_위원행검증() And committeeCount >= 1
+End Function
+
+' F-035·F-036은 F-032·F-033과 같이 업체 반복행(기초자료입력!B44:B53) 전체를 한 표에
+' 보여주는 집계 보고서이며, 점수는 F-015/F-016이 이미 쓰는 학교 평가 점수 열(C:F 정량,
+' H:L 정성)을 그대로 재조회한다. 업체 존재만 확인하고 점수 입력 여부는 강제하지 않는다
+' (F-032/F-033과 동일 수준 — 평가 진행 중에도 접수 현황·중간 보고서를 출력할 수 있어야 함).
+Public Function 검증_F035출력가능() As Boolean
+    Dim vendorCount As Long
+    vendorCount = Application.WorksheetFunction.CountA(Sheets("기초자료입력").Range("B44:B53"))
+    검증_F035출력가능 = 검증_필수값검증() And 검증_업체행검증() And vendorCount >= 1
+End Function
+
+Public Function 검증_F036출력가능() As Boolean
+    Dim vendorCount As Long
+    vendorCount = Application.WorksheetFunction.CountA(Sheets("기초자료입력").Range("B44:B53"))
+    검증_F036출력가능 = 검증_필수값검증() And 검증_업체행검증() And vendorCount >= 1
 End Function
 
 Private Function F015업체행완전한가(ByVal sourceRow As Long) As Boolean
@@ -1695,6 +1731,7 @@ End Sub
     $codeOutput = $codeOutput -replace "`r`n", "`r" -replace "`n", "`r"
     $modOutput.CodeModule.AddFromString($codeOutput)
     L "Module_출력 추가 완료 (줄 수: $($modOutput.CodeModule.CountOfLines))"
+    try { $wb.Save(); L "DIAG_CHECKPOINT2_SAVE_OK" } catch { L "DIAG_CHECKPOINT2_SAVE_FAIL: $($_.Exception.Message)" }
 
     $modNavigation = $vbproj.VBComponents.Add(1)
     $modNavigation.Name = "Module_검색_절차"
@@ -1832,6 +1869,7 @@ End Sub
     $codeNavigation = $codeNavigation -replace "`r`n", "`r" -replace "`n", "`r"
     $modNavigation.CodeModule.AddFromString($codeNavigation)
     L "Module_검색_절차 추가 완료 (줄 수: $($modNavigation.CodeModule.CountOfLines))"
+    try { $wb.Save(); L "DIAG_CHECKPOINT3_SAVE_OK" } catch { L "DIAG_CHECKPOINT3_SAVE_FAIL: $($_.Exception.Message)" }
 
     # ---- ThisWorkbook: Workbook_Open (서식선택 체크박스 초기화) ----
     # 참고: 한글 Office에서는 ThisWorkbook 문서모듈의 기본 컴포넌트 이름이 "ThisWorkbook"이 아니라
@@ -1891,6 +1929,7 @@ End Sub
     $codeThisWb = $codeThisWb -replace "`r`n", "`r" -replace "`n", "`r"
     $thisWb.CodeModule.AddFromString($codeThisWb)
     L "ThisWorkbook.Workbook_Open 추가 완료"
+    try { $wb.Save(); L "DIAG_CHECKPOINT4_SAVE_OK" } catch { L "DIAG_CHECKPOINT4_SAVE_FAIL: $($_.Exception.Message)" }
 
     # ---- Form 컨트롤 버튼 배치 (재실행 대비: 동일 이름 기존 버튼 제거) ----
     $wsIn = $wb.Worksheets.Item("기초자료입력")
@@ -1957,15 +1996,42 @@ End Sub
     L "계약방법안내 반영 버튼 배치 완료"
 
     # ---- 저장 ----
-    $wb.Save()
-    $saveSucceeded = $true
-    L "VBA 매크로 및 버튼 추가 후 저장 완료: $targetPath"
+    # 2026-09-19 진단: Save()가 일반 COMException으로 실패해 SaveAs(같은 경로, 52)로
+    # 바꿔봤으나, 이미 열려 있는 파일을 자기 자신에 SaveAs로 덮어쓰는 시도가 오히려 더
+    # 구체적인 "저장할 수 없습니다" 잠금류 오류로 실패함(자기 자신을 여는 새 쓰기 핸들과
+    # 기존 열림 핸들이 충돌하는 것으로 추정). Save()는 이 코드베이스 전체 이력에서 수백 회
+    # 성공한 방식이므로 되돌리되, 이 프로젝트에서 반복 관찰된 일시적 COM/훅 레이스 현상에
+    # 대비해 짧은 재시도(지수 백오프 + GC)를 추가한다.
+    $saveAttempt = 0
+    $saveLastError = $null
+    while ($saveAttempt -lt 3 -and -not $saveSucceeded) {
+        $saveAttempt++
+        try {
+            $wb.Save()
+            $saveSucceeded = $true
+        } catch {
+            $saveLastError = $_
+            L "저장 시도 $saveAttempt/3 실패: $($_.Exception.Message)"
+            [GC]::Collect()
+            [GC]::WaitForPendingFinalizers()
+            Start-Sleep -Seconds ([Math]::Pow(2, $saveAttempt))
+        }
+    }
+    if (-not $saveSucceeded) { throw $saveLastError }
+    L "VBA 매크로 및 버튼 추가 후 저장 완료(SaveAs): $targetPath"
 
 } finally {
-    if ($wb) { $wb.Close($saveSucceeded) }
-    $excel.Quit()
-    if ($wb) { [System.Runtime.Interopservices.Marshal]::ReleaseComObject($wb) | Out-Null }
-    [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
+    # 정리 단계 자체의 COM 오류(예: 앞선 오류로 Excel 프로세스가 이미 비정상 상태가 된 경우의
+    # Close() 실패)가 try 블록의 원래 예외를 가리거나 로그 flush·프로세스 강제 종료를 막지
+    # 않도록 각 정리 호출을 개별적으로 감싼다.
+    if ($wb) {
+        try { $wb.Close($saveSucceeded) } catch { L "Workbook Close 실패(정리 계속 진행): $($_.Exception.Message)" }
+    }
+    try { $excel.Quit() } catch { L "Excel Quit 실패(정리 계속 진행): $($_.Exception.Message)" }
+    if ($wb) {
+        try { [System.Runtime.Interopservices.Marshal]::ReleaseComObject($wb) | Out-Null } catch { L "Workbook ReleaseComObject 실패(정리 계속 진행): $($_.Exception.Message)" }
+    }
+    try { [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null } catch { L "Excel ReleaseComObject 실패(정리 계속 진행): $($_.Exception.Message)" }
     [GC]::Collect()
     [GC]::WaitForPendingFinalizers()
     [GC]::Collect()
@@ -1977,6 +2043,7 @@ End Sub
             L "PID $excelProcessId Excel 프로세스가 Quit() 이후에도 남아 있어 강제 종료함"
         }
     }
+    # try 블록에서 예외가 발생했더라도(원본 예외는 finally 종료 후 그대로 재전파됨) 여기까지
+    # 수집된 로그는 항상 디스크에 남겨 원인 진단이 가능하게 한다.
+    [System.IO.File]::WriteAllText($logPath, $log.ToString(), [System.Text.UTF8Encoding]::new($false))
 }
-
-[System.IO.File]::WriteAllText($logPath, $log.ToString(), [System.Text.UTF8Encoding]::new($false))
