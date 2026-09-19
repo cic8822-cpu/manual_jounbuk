@@ -123,7 +123,7 @@ try {
     Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B5').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B6').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B7').Value2) -and $wsMethod.Buttons('btn계약방법반영').OnAction -eq '계약방법안내_기초자료반영') '계약방법안내가 빈 확인값으로 시작하며 반영 버튼이 존재함'
 
     # 5. A4 1쪽 자연 충족 재확인 (F-007, F-014, F-024)
-    foreach ($sn in @("F-001_위원회구성기안","F-002_위원수락확인서","F-003_위원청렴보안서약서","F-004_구매추진계획수립기안문","F-006_운영위원회심의안","F-007_구매요청기안문","F-014_평가항목배점기준","F-015_정량적평가","F-016_정성적평가","F-017_제출서류자기확인서","F-018_정량적평가자기평점표","F-019_입찰참가신청서","F-020_입찰참가신고서","F-021_교복납품제안서","F-022_교복납품실적표","F-023_교복제조사양서","F-024_단가비율표","F-025_교복AS계획서","F-032_제안서접수결과","F-033_제안서접수대장","F-034_평가위원회개최","F-035_정량평가결과","F-036_제안서평가결과","F-039_업체별제안서평가표","F-041_낙찰자결정","F-042_낙찰자결정통보","F-043_계약체결","F-044_사전안내가정통신문안내")) {
+    foreach ($sn in @("F-001_위원회구성기안","F-002_위원수락확인서","F-003_위원청렴보안서약서","F-004_구매추진계획수립기안문","F-006_운영위원회심의안","F-007_구매요청기안문","F-014_평가항목배점기준","F-015_정량적평가","F-016_정성적평가","F-017_제출서류자기확인서","F-018_정량적평가자기평점표","F-019_입찰참가신청서","F-020_입찰참가신고서","F-021_교복납품제안서","F-022_교복납품실적표","F-023_교복제조사양서","F-024_단가비율표","F-025_교복AS계획서","F-032_제안서접수결과","F-033_제안서접수대장","F-034_평가위원회개최","F-035_정량평가결과","F-036_제안서평가결과","F-039_업체별제안서평가표","F-041_낙찰자결정","F-042_낙찰자결정통보","F-043_계약체결","F-044_사전안내가정통신문안내","F-045_사전안내가정통신문")) {
         $ws = $wb.Worksheets.Item($sn)
         $hb = $ws.HPageBreaks.Count
         $vb = $ws.VPageBreaks.Count
@@ -447,6 +447,13 @@ try {
     Assert-Check ([bool]$excel.Run('검증_F044출력가능')) 'F-044 선택 출력이 공통 필수값이 있을 때 허용함'
     $bodyTextF44 = ($wsF44.Range('B3:H25').Cells | ForEach-Object { [string]$_.Value2 }) -join ' '
     Assert-Check ($bodyTextF44 -notmatch '홍길동' -and $bodyTextF44 -notmatch '010-') 'F-044가 학생·학부모 개인정보를 자동 출력하지 않음'
+
+    $wsF45 = $wb.Worksheets.Item('F-045_사전안내가정통신문')
+    Assert-Check ($wsF45.Range('B6').Value2 -eq '안녕하십니까? 졸업과 함께 상급학교로 진학함을 축하드립니다.' -and $wsF45.Range('B19').Value2 -eq '감사합니다.') 'F-045 원문 대조 인사말·맺음말 문구가 존재함'
+    Assert-Check ($wsF45.Range('B3').Value2 -eq '2026학년도 동복 학교주관구매 요청' -and $wsF45.Range('B8').Value2 -match '2026학년도 중학교, 고등학교 신입생 배정을 앞두고 2026학년도 동복 구매에 대한 사항' -and $wsF45.Range('B22').Value2 -eq '테스트초등학교장') 'F-045가 학교명·학년도·구매명·제목 공통값을 반영함'
+    Assert-Check ([bool]$excel.Run('검증_F045출력가능')) 'F-045 선택 출력이 공통 필수값이 있을 때 허용함'
+    $bodyTextF45 = ($wsF45.Range('B3:H22').Cells | ForEach-Object { [string]$_.Value2 }) -join ' '
+    Assert-Check ($bodyTextF45 -notmatch '홍길동' -and $bodyTextF45 -notmatch '010-') 'F-045가 학생·학부모 개인정보를 자동 출력하지 않음'
 
     $wsF16 = $wb.Worksheets.Item('F-016_정성적평가')
     Assert-Check ($wsF16.Range('B3').Value2 -eq '[9-5] [붙임 3_2] [2단계] 정성적 평가' -and $wsF16.Range('B8').Value2 -eq '구분' -and $wsF16.Range('C8').Value2 -eq '평가항목' -and $wsF16.Range('F8').Value2 -eq '평가점수') 'F-016 원문 대조 제목과 고정 배점표 머리글이 존재함'
