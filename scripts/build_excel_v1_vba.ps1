@@ -1082,6 +1082,7 @@ Private Function 단일출력검증함수명(ByVal fid As String) As String
         Case "F-043": 단일출력검증함수명 = "검증_F043출력가능"
         Case "F-044": 단일출력검증함수명 = "검증_F044출력가능"
         Case "F-045": 단일출력검증함수명 = "검증_F045출력가능"
+        Case "F-046": 단일출력검증함수명 = "검증_F046출력가능"
         Case Else: 단일출력검증함수명 = ""
     End Select
 End Function
@@ -1453,6 +1454,10 @@ End Function
 
 Public Function 검증_F045출력가능() As Boolean
     검증_F045출력가능 = 검증_필수값검증()
+End Function
+
+Public Function 검증_F046출력가능() As Boolean
+    검증_F046출력가능 = 검증_필수값검증()
 End Function
 
 Private Function 양수값(ByVal value As Variant) As Boolean
