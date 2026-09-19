@@ -12,7 +12,9 @@
               "-ExecutionPolicy",
               "Bypass",
               "-File",
-              "${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-phase.ps1"
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-phase.ps1",
+              "-Mode",
+              "static"
             ],
             "timeout": 30
           }
@@ -30,7 +32,9 @@
               "-ExecutionPolicy",
               "Bypass",
               "-File",
-              "${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-phase.ps1"
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-phase.ps1",
+              "-Mode",
+              "static"
             ],
             "timeout": 30
           }

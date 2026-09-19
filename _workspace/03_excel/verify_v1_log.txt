@@ -1,0 +1,52 @@
+외부 링크(xlExcelLinks): 0건
+PASS: 외부 링크가 0건임
+외부 연결(Connections): 0 건
+PASS: 외부 연결이 0건임
+#REF! 이름정의: 0 건 
+PASS: #REF! 이름 정의가 0건임
+시트 목록: 계약방법안내, 절차안내, 학교검색, 학교정보, F-040_위원청렴보안서약서, F-038_업체참가등록부, F-037_평가위원회참석등록부, F-043_계약체결, F-042_낙찰자결정통보, F-041_낙찰자결정, F-006_운영위원회심의안, F-005_구매추진계획안, F-004_구매추진계획수립기안문, F-003_위원청렴보안서약서, F-002_위원수락확인서, F-001_위원회구성기안, F-025_교복AS계획서, F-023_교복제조사양서, F-022_교복납품실적표, F-021_교복납품제안서, F-020_입찰참가신고서, F-019_입찰참가신청서, F-018_정량적평가자기평점표, F-017_제출서류자기확인서, F-016_정성적평가, F-015_정량적평가, F-014_평가항목배점기준, F-024_단가비율표, F-007_구매요청기안문, 서식선택_출력, DB_자기평점, DB_정성평가, DB_정량평가, DB_평가, DB_위원, DB_업체, DB_품목, DB, 기초자료입력, 사용설명서
+FAIL: F-032·F-033·F-034를 포함한 필수 43개 시트가 모두 존재함
+PASS: DB는 숨김·보호되고 반복 DB는 VeryHidden·보호됨
+DB 숨김·무암호 보호는 우발적 편집 방지 상태로만 확인함. 직접 DB 편집의 영구 저장 차단은 아래 Workbook_BeforeSave 저장 경계 시나리오에서 별도로 검증함.
+PASS: Workbook_Open이 재열기 후 모든 DB 시트의 UserInterfaceOnly 보호를 재적용함
+PASS: 학교정보 공개 기관정보 표본이 정확히 120행임
+PASS: 학교명·지역·급별 검색 조건 UI가 존재함
+PASS: 교복구매 9단계와 대표 Form ID 이동값이 존재함
+PASS: 계약방법안내가 빈 확인값으로 시작하며 반영 버튼이 존재함
+F-001_위원회구성기안 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-001_위원회구성기안 A4 1쪽 자연 배율 출력
+F-002_위원수락확인서 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-002_위원수락확인서 A4 1쪽 자연 배율 출력
+F-003_위원청렴보안서약서 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-003_위원청렴보안서약서 A4 1쪽 자연 배율 출력
+F-004_구매추진계획수립기안문 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-004_구매추진계획수립기안문 A4 1쪽 자연 배율 출력
+F-006_운영위원회심의안 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-006_운영위원회심의안 A4 1쪽 자연 배율 출력
+F-007_구매요청기안문 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-007_구매요청기안문 A4 1쪽 자연 배율 출력
+F-014_평가항목배점기준 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-014_평가항목배점기준 A4 1쪽 자연 배율 출력
+F-015_정량적평가 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-015_정량적평가 A4 1쪽 자연 배율 출력
+F-016_정성적평가 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-016_정성적평가 A4 1쪽 자연 배율 출력
+F-017_제출서류자기확인서 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-017_제출서류자기확인서 A4 1쪽 자연 배율 출력
+F-018_정량적평가자기평점표 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-018_정량적평가자기평점표 A4 1쪽 자연 배율 출력
+F-019_입찰참가신청서 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-019_입찰참가신청서 A4 1쪽 자연 배율 출력
+F-020_입찰참가신고서 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-020_입찰참가신고서 A4 1쪽 자연 배율 출력
+F-021_교복납품제안서 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-021_교복납품제안서 A4 1쪽 자연 배율 출력
+F-022_교복납품실적표 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-022_교복납품실적표 A4 1쪽 자연 배율 출력
+F-023_교복제조사양서 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-023_교복제조사양서 A4 1쪽 자연 배율 출력
+F-024_단가비율표 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-024_단가비율표 A4 1쪽 자연 배율 출력
+F-025_교복AS계획서 : Zoom=100, HPageBreaks=0, VPageBreaks=0 => A4 1쪽 자연 충족 OK
+PASS: F-025_교복AS계획서 A4 1쪽 자연 배율 출력
+PID 20620 Excel 프로세스가 Quit() 이후에도 남아 있어 강제 종료함

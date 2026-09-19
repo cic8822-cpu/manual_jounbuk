@@ -1,4 +1,20 @@
-﻿$ErrorActionPreference = 'Stop'
+﻿param(
+    [ValidateSet('static', 'full')]
+    [string]$Mode = 'full'
+)
+
+$ErrorActionPreference = 'Stop'
+
+# TaskCompleted와 Stop이 거의 동시에 도착해도 Excel COM/PDF 통합 검증은 하나만 실행한다.
+# 정적 훅은 공유 자원을 잡지 않으므로 편집 중 구문·린트 검사는 계속 즉시 실행된다.
+$fullVerificationMutex = $null
+if ($Mode -eq 'full') {
+    $fullVerificationMutex = New-Object System.Threading.Mutex($false, 'Local\UniformPurchaseVerifyPhaseFull')
+    if (-not $fullVerificationMutex.WaitOne(0)) {
+        [Console]::Error.WriteLine('이미 실행 중인 Excel/PDF 전체 품질 검증이 있어 이번 전체 훅 실행을 건너뜁니다.')
+        exit 3
+    }
+}
 
 # Hook 호스트가 표준 입력을 전달한 경우에만 소비해 수동 실행 시 대기하지 않도록 함.
 if ([Console]::IsInputRedirected) {
@@ -317,23 +333,22 @@ if ($null -ne $gate -and $gate.activePhase -eq 'P1-04') {
     }
 }
 
+# 모든 제품 스크립트는 구문·린트 대상이다. 새 HWPX 경로가 Excel 경로보다 느슨한
+# 품질 기준으로 실행되지 않도록 scripts 하위의 .ps1을 동적으로 수집한다.
+$productScripts = @(Get-ChildItem -LiteralPath (Join-Path $root 'scripts') -Filter '*.ps1' -File | Sort-Object FullName)
+if ($productScripts.Count -eq 0) {
+    $failures.Add('P3 제품 PowerShell 스크립트를 찾지 못함: scripts/*.ps1')
+}
+
 # PowerShell 스크립트는 실행 전에 구문 오류를 차단한다. PSScriptAnalyzer가 없는 환경에서도
 # 표준 PowerShell 파서를 사용하므로 린트 공백이 완료 판정으로 새지 않는다.
-foreach ($relativeScriptPath in @(
-    'scripts\\verify_excel_v1.ps1',
-    'scripts\\build_excel_v1_structure.ps1',
-    'scripts\\build_excel_v1_vba.ps1'
-)) {
-    $scriptPath = Join-Path $root $relativeScriptPath
-    if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
-        $failures.Add("P3 스크립트 누락: $relativeScriptPath")
-        continue
-    }
+foreach ($scriptFile in $productScripts) {
+    $scriptPath = $scriptFile.FullName
     $parseTokens = $null
     $parseErrors = $null
     [void][System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$parseTokens, [ref]$parseErrors)
     if (@($parseErrors).Count -gt 0) {
-        $failures.Add("PowerShell 구문 검사 실패: $relativeScriptPath — $($parseErrors[0].Message)")
+        $failures.Add("PowerShell 구문 검사 실패: $($scriptFile.Name) — $($parseErrors[0].Message)")
     }
 }
 
@@ -342,25 +357,17 @@ if ($null -eq $scriptAnalyzer) {
     $failures.Add('PSScriptAnalyzer가 설치되지 않아 PowerShell 린트를 수행할 수 없음')
 } else {
     Import-Module PSScriptAnalyzer -ErrorAction Stop
-    foreach ($relativeScriptPath in @(
-        'scripts\\verify_excel_v1.ps1',
-        'scripts\\build_excel_v1_structure.ps1',
-        'scripts\\build_excel_v1_vba.ps1',
-        '.claude\\hooks\\verify-phase.ps1'
-    )) {
-        $scriptPath = Join-Path $root $relativeScriptPath
-        if (Test-Path -LiteralPath $scriptPath -PathType Leaf) {
-            $lintFindings = @(Invoke-ScriptAnalyzer -Path $scriptPath -Severity Error,Warning)
-            if ($lintFindings.Count -gt 0) {
-                $failures.Add("PowerShell 린트 실패: $relativeScriptPath — $($lintFindings[0].RuleName) (line $($lintFindings[0].Line))")
-            }
+    foreach ($scriptFile in @($productScripts) + @(Get-Item -LiteralPath (Join-Path $root '.claude\hooks\verify-phase.ps1'))) {
+        $lintFindings = @(Invoke-ScriptAnalyzer -Path $scriptFile.FullName -Severity Error,Warning)
+        if ($lintFindings.Count -gt 0) {
+            $failures.Add("PowerShell 린트 실패: $($scriptFile.Name) — $($lintFindings[0].RuleName) (line $($lintFindings[0].Line))")
         }
     }
 }
 
 # P3는 Markdown 상태만 PASS/DONE으로 바꿔서는 완료할 수 없다. 실제 XLSM 검증 스크립트가
 # 사본에서 Excel COM·PDF·수식·외부 의존성을 재검증해 0으로 종료해야 한다.
-if ($null -ne $gate -and $gate.activePhase -eq 'P3-01') {
+if ($Mode -eq 'full' -and $null -ne $gate -and $gate.activePhase -eq 'P3-01') {
     $excelVerifier = Join-Path $root 'scripts\\verify_excel_v1.ps1'
     if (Test-Path -LiteralPath $excelVerifier -PathType Leaf) {
         $previousBuildPath = $env:UNIFORM_EXCEL_BUILD_PATH
@@ -420,8 +427,10 @@ try {
 }
 
 if ($failures.Count -gt 0) {
+    if ($null -ne $fullVerificationMutex) { $fullVerificationMutex.ReleaseMutex(); $fullVerificationMutex.Dispose() }
     [Console]::Error.WriteLine(('품질 게이트 미통과: ' + ($failures -join '; ') + '. 오류를 수정하고 검사 상태를 PASS로 갱신한 뒤 다시 검증해야 함.'))
     exit 2
 }
 
+if ($null -ne $fullVerificationMutex) { $fullVerificationMutex.ReleaseMutex(); $fullVerificationMutex.Dispose() }
 exit 0

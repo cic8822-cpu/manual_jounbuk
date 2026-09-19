@@ -29,7 +29,7 @@ $excel.DisplayAlerts = $false
 # 같은 열의 앞선 값과 유사한 접두 패턴을 감지해 값을 예기치 않게 바꿔치기하는 현상이 재현되어
 # 비활성화한다(COM 자동화 세션 전체에 적용, 다른 시트 입력에는 영향 없음 — 이 속성은 사용자가
 # 직접 타이핑할 때의 UI 동작을 제어하며 COM Value2/Formula 대입 자체를 막지 않음).
-try { $excel.EnableAutoComplete = $false } catch {}
+try { $excel.EnableAutoComplete = $false } catch { $null = $_ }
 $log = New-Object System.Text.StringBuilder
 function L($s) {
     [void]$log.AppendLine($s)
@@ -370,7 +370,7 @@ try {
         @("F-049","만족도 설문조사 실시","사후평가"), @("F-050","만족도 조사 설문지","사후평가"),
         @("F-051","만족도 설문조사 결과","사후평가"), @("F-052","만족도 조사 설문 결과 서식","사후평가")
     )
-    $implemented = @{ "F-001" = "F-001_위원회구성기안"; "F-002" = "F-002_위원수락확인서"; "F-003" = "F-003_위원청렴보안서약서"; "F-004" = "F-004_구매추진계획수립기안문"; "F-005" = "F-005_구매추진계획안"; "F-006" = "F-006_운영위원회심의안"; "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-016" = "F-016_정성적평가"; "F-017" = "F-017_제출서류자기확인서"; "F-018" = "F-018_정량적평가자기평점표"; "F-019" = "F-019_입찰참가신청서"; "F-020" = "F-020_입찰참가신고서"; "F-021" = "F-021_교복납품제안서"; "F-022" = "F-022_교복납품실적표"; "F-023" = "F-023_교복제조사양서"; "F-024" = "F-024_단가비율표"; "F-025" = "F-025_교복AS계획서"; "F-041" = "F-041_낙찰자결정"; "F-042" = "F-042_낙찰자결정통보"; "F-043" = "F-043_계약체결" }
+    $implemented = @{ "F-001" = "F-001_위원회구성기안"; "F-002" = "F-002_위원수락확인서"; "F-003" = "F-003_위원청렴보안서약서"; "F-004" = "F-004_구매추진계획수립기안문"; "F-005" = "F-005_구매추진계획안"; "F-006" = "F-006_운영위원회심의안"; "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-016" = "F-016_정성적평가"; "F-017" = "F-017_제출서류자기확인서"; "F-018" = "F-018_정량적평가자기평점표"; "F-019" = "F-019_입찰참가신청서"; "F-020" = "F-020_입찰참가신고서"; "F-021" = "F-021_교복납품제안서"; "F-022" = "F-022_교복납품실적표"; "F-023" = "F-023_교복제조사양서"; "F-024" = "F-024_단가비율표"; "F-025" = "F-025_교복AS계획서"; "F-032" = "F-032_제안서접수결과"; "F-033" = "F-033_제안서접수대장"; "F-034" = "F-034_평가위원회개최"; "F-037" = "F-037_평가위원회참석등록부"; "F-038" = "F-038_업체참가등록부"; "F-040" = "F-040_위원청렴보안서약서"; "F-041" = "F-041_낙찰자결정"; "F-042" = "F-042_낙찰자결정통보"; "F-043" = "F-043_계약체결" }
     $deferred = @{ "F-013" = "HWPX 우선순위 위임(표·이미지 복합조판)" }
 
     $row = 5
@@ -1601,6 +1601,147 @@ try {
     $hbF43 = $ws.HPageBreaks.Count; $vbF43 = $ws.VPageBreaks.Count
     L "F-043 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=$hbF43, VPageBreaks=$vbF43 (둘 다 0이면 A4 1쪽 자연 충족)"
     L "F-043 원문 계약체결 대조 레이아웃(계약상대자 업체명 1곳 선택 반영, 단가 입력×예정수량 K-01/K-02 계산, 소재지·대표자·전화번호 수기 경계) 적용 완료"
+
+    # ---- 7v. F-032 제안서 접수 결과 ----
+    # 원본 HWPX 61쪽 [10] 대조. 업체 반복행(R-03)의 업체명만 반영한다. 접수일자와
+    # 대표자는 제안서를 실제 접수한 뒤 담당자가 수기 작성하는 값이므로 자동 반영하지 않는다.
+    $wsF32 = $wbNew.Worksheets.Add(); $wsF32.Name = "F-032_제안서접수결과"; $ws = $wsF32
+    $ws.Range("A1").Value2 = "[검토중 — 담당자 최종 확인 후 사용] 원본 HWPX 61쪽 [10] 대조. 업체명만 자동 반영하며 접수일자·대표자는 수기 작성함"
+    $ws.Range("A1").Font.Size = 8; $ws.Range("A1").Font.Color = 255
+    $ws.Range("B3:H4").Merge() | Out-Null; $ws.Range("B3").Formula = '=IF(기초자료입력!C4<>"",기초자료입력!C4,"○○학교")&" 교복구매 제안서 접수 결과"'; $ws.Range("B3").Font.Size = 15; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108
+    $ws.Range("B5").Value2 = "문서번호"; $ws.Range("C5").Formula = '=IF(기초자료입력!C9<>"",기초자료입력!C9,"")'
+    $ws.Range("E5").Value2 = "시행일자"; $ws.Range("F5").Formula = '=IF(기초자료입력!C8<>"",TEXT(기초자료입력!C8,"yyyy-mm-dd"),"")'
+    $ws.Range("C7:H7").Merge() | Out-Null; $ws.Range("B7").Value2 = "수  신"; $ws.Range("C7").Value2 = "내부결재"
+    $ws.Range("C8:H8").Merge() | Out-Null; $ws.Range("B8").Value2 = "(경유)"
+    $ws.Range("C9:H9").Merge() | Out-Null; $ws.Range("B9").Value2 = "제  목"; $ws.Range("C9").Formula = '=IF(기초자료입력!C22<>"",기초자료입력!C22,IF(기초자료입력!C5<>"",기초자료입력!C5,"20○○")&"학년도 교복 학교주관구매 제안서 접수 결과 보고")'; $ws.Range("C9").Font.Bold = $true
+    $ws.Range("B11:H11").Merge() | Out-Null; $ws.Range("B11").Formula = '="1. "&IF(기초자료입력!C23<>"",기초자료입력!C23,"관련 문서를 확인하십시오.")'
+    $ws.Range("B13:H14").Merge() | Out-Null; $ws.Range("B13").Formula = '="2. "&IF(기초자료입력!C5<>"",기초자료입력!C5,"20○○")&"학년도 "&IF(기초자료입력!C12<>"",기초자료입력!C12,"교복 학교주관구매")&" 2단계 입찰(규격·가격 동시) 공고와 관련하여 제안서 접수 결과를 아래와 같이 보고합니다."'; $ws.Range("B13").WrapText = $true; $ws.Rows.Item(13).RowHeight = 32
+    $ws.Range("B16:H16").Merge() | Out-Null; $ws.Range("B16").Value2 = "□ 제안서 접수 결과 □"; $ws.Range("B16").Font.Bold = $true
+    $ws.Range("B17").Value2 = "접수번호"; $ws.Range("C17").Value2 = "접수일자"; $ws.Range("D17:E17").Merge() | Out-Null; $ws.Range("D17").Value2 = "업체현황"; $ws.Range("D18").Value2 = "업체명"; $ws.Range("E18").Value2 = "대표자"; $ws.Range("B17:B18").Merge() | Out-Null; $ws.Range("C17:C18").Merge() | Out-Null
+    for ($i = 0; $i -lt 10; $i++) { $r = 19 + $i; $srcRow = 44 + $i; $ws.Range("B$r").Formula = "=IF(기초자료입력!B$srcRow<>`"`",$($i+1),`"`")"; $ws.Range("D$r").Formula = "=IF(기초자료입력!B$srcRow<>`"`",기초자료입력!B$srcRow,`"`")"; $ws.Range("C$r,E$r").Interior.Color = 16777164 }
+    $ws.Range("B30:H30").Merge() | Out-Null; $ws.Range("B30").Formula = '="붙임  "&IF(기초자료입력!C5<>"",기초자료입력!C5,"20○○")&"학년도 교복 학교주관구매 제안서 접수대장 1부.  끝."'
+    $ws.Range("F33").Value2 = "담당"; $ws.Range("G33").Value2 = "협조자"; $ws.Range("H33").Value2 = "교장"
+    $ws.Range("B34").Value2 = "시행"; $ws.Range("C34:E34").Merge() | Out-Null; $ws.Range("C34").Formula = '=IF(기초자료입력!C9<>"",기초자료입력!C9,"")'; $ws.Range("F34").Value2 = "접수"; $ws.Range("G34:H34").Merge() | Out-Null
+    $ws.Range("B35").Value2 = "우편번호"; $ws.Range("D35").Value2 = "주소"; $ws.Range("E35:H35").Merge() | Out-Null
+    $ws.Range("B36").Value2 = "전화"; $ws.Range("D36").Value2 = "전송(팩스)"; $ws.Range("F36").Value2 = "이메일"; $ws.Range("G36:H36").Merge() | Out-Null
+    $ws.Range("B5:H36").Font.Size = 9; $ws.Range("B5,E5,B7,B8,B9,B11,B16,B17:E18,F33:H33,B34,F34,B35,D35,B36,D36,F36").Font.Bold = $true; $ws.Range("B17:E28").Borders.LineStyle = 1; $ws.Range("B17:E18").Interior.Color = 15987699; $ws.Range("B17:E28").HorizontalAlignment = -4108; $ws.Range("B5:H9,F33:H36").Borders.LineStyle = 1
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 11; $ws.Columns.Item("C").ColumnWidth = 14; $ws.Columns.Item("D").ColumnWidth = 19; $ws.Columns.Item("E").ColumnWidth = 14; $ws.Columns.Item("F").ColumnWidth = 8; $ws.Columns.Item("G").ColumnWidth = 8; $ws.Columns.Item("H").ColumnWidth = 8
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 1.0; $ps.BottomMargin = CmToPt 1.0; $ps.LeftMargin = CmToPt 1.0; $ps.RightMargin = CmToPt 1.0; $ps.HeaderMargin = CmToPt 0.5; $ps.FooterMargin = CmToPt 0.5; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$A`$1:`$H`$36"
+    $hbF32 = $ws.HPageBreaks.Count; $vbF32 = $ws.VPageBreaks.Count; L "F-032 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=$hbF32, VPageBreaks=$vbF32"
+
+    # ---- 7w. F-033 제안서 접수대장 ----
+    # 원본 HWPX 62쪽 [10-1] 대조. 업체명만 반복행에서 자동 반영하고 대표자·연락처·대리인·서명은 공란이다.
+    $wsF33 = $wbNew.Worksheets.Add(); $wsF33.Name = "F-033_제안서접수대장"; $ws = $wsF33
+    $ws.Range("A1").Value2 = "[검토중 — 담당자 최종 확인 후 사용] 원본 HWPX 62쪽 [10-1] 대조. 업체명 외 대표자·연락처·대리인·수령인은 수기 공란임"
+    $ws.Range("A1").Font.Size = 8; $ws.Range("A1").Font.Color = 255
+    $ws.Range("B3:L3").Merge() | Out-Null; $ws.Range("B3").Formula = '=IF(기초자료입력!C5<>"",기초자료입력!C5,"20○○")&"학년도 교복 학교주관구매 제안서 접수대장"'; $ws.Range("B3").Font.Size = 15; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108
+    $ws.Range("B4:L4").Merge() | Out-Null; $ws.Range("B4").Formula = '=IF(기초자료입력!C4<>"",기초자료입력!C4,"○○학교")'; $ws.Range("B4").HorizontalAlignment = -4108
+    $ws.Range("B6").Value2 = "접수" + [Environment]::NewLine + "일자"; $ws.Range("C6").Value2 = "접수" + [Environment]::NewLine + "번호"; $ws.Range("D6:F6").Merge() | Out-Null; $ws.Range("D6").Value2 = "회사현황"; $ws.Range("G6:I6").Merge() | Out-Null; $ws.Range("G6").Value2 = "접수인(대리인)현황"; $ws.Range("J6:K6").Merge() | Out-Null; $ws.Range("J6").Value2 = "샘플 반환"; $ws.Range("L6:L7").Merge() | Out-Null; $ws.Range("L6").Value2 = "비고"
+    $headersF33 = @("업체명","대표자","전화" + [Environment]::NewLine + "번호","직위","접수인" + [Environment]::NewLine + "(대리인)","전화" + [Environment]::NewLine + "번호","일자","수령인")
+    for ($i = 0; $i -lt $headersF33.Count; $i++) { $ws.Cells.Item(7, 4 + $i).Value2 = $headersF33[$i] }
+    $ws.Range("B6:B7").Merge() | Out-Null; $ws.Range("C6:C7").Merge() | Out-Null
+    for ($i = 0; $i -lt 10; $i++) { $r = 8 + $i; $srcRow = 44 + $i; $ws.Range("C$r").Formula = "=IF(기초자료입력!B$srcRow<>`"`",$($i+1),`"`")"; $ws.Range("D$r").Formula = "=IF(기초자료입력!B$srcRow<>`"`",기초자료입력!B$srcRow,`"`")"; $ws.Range("B$r,E$r:L$r").Interior.Color = 16777164 }
+    $ws.Range("B20:L20").Merge() | Out-Null; $ws.Range("B20").Value2 = "※ 샘플은 낙찰업체를 제외하고, 낙찰자 결정 이후 7일 이내 업체에서 수거"; $ws.Range("B20").Font.Size = 8
+    $ws.Range("B21:L21").Merge() | Out-Null; $ws.Range("B21").Value2 = "(탈락업체에서 샘플 미수거 시 폐기처분 할 수 있음)"; $ws.Range("B21").Font.Size = 8
+    $ws.Range("B6:L17").Borders.LineStyle = 1; $ws.Range("B6:L7").Interior.Color = 15987699; $ws.Range("B6:L7").Font.Bold = $true; $ws.Range("B6:L17").HorizontalAlignment = -4108; $ws.Range("B6:L17").VerticalAlignment = -4108; $ws.Range("B6:L17").WrapText = $true; $ws.Rows.Item(6).RowHeight = 30; $ws.Rows.Item(7).RowHeight = 30
+    $ws.Columns.Item("A").ColumnWidth = 2.5; foreach ($col in @("B","C","E","F","G","H","I","J","K","L")) { $ws.Columns.Item($col).ColumnWidth = 8 }; $ws.Columns.Item("D").ColumnWidth = 16; $ws.Range("B3:L21").Font.Size = 9
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 2; $ps.TopMargin = CmToPt 1.0; $ps.BottomMargin = CmToPt 1.0; $ps.LeftMargin = CmToPt 1.0; $ps.RightMargin = CmToPt 1.0; $ps.HeaderMargin = CmToPt 0.5; $ps.FooterMargin = CmToPt 0.5; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$A`$1:`$L`$21"
+    $hbF33 = $ws.HPageBreaks.Count; $vbF33 = $ws.VPageBreaks.Count; L "F-033 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=$hbF33, VPageBreaks=$vbF33"
+
+    # ---- 7x. F-034 제안서 평가위원회 개최 ----
+    # 원본 HWPX 63쪽 [11] 대조. 위원 역할·마스킹 식별표시만 반영하며 일시·장소·서명은 수기 공란이다.
+    $wsF34 = $wbNew.Worksheets.Add(); $wsF34.Name = "F-034_평가위원회개최"; $ws = $wsF34
+    $ws.Range("A1").Value2 = "[검토중 — 담당자 최종 확인 후 사용] 원본 HWPX 63쪽 [11] 대조. 위원 성명은 마스킹 식별표시만 반영하며 일시·장소는 수기 작성함"
+    $ws.Range("A1").Font.Size = 8; $ws.Range("A1").Font.Color = 255
+    $ws.Range("B3:H4").Merge() | Out-Null; $ws.Range("B3").Formula = '=IF(기초자료입력!C4<>"",기초자료입력!C4,"○○학교")&" 교복 제안서 평가위원회 개최"'; $ws.Range("B3").Font.Size = 15; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108
+    $ws.Range("B5").Value2 = "문서번호"; $ws.Range("C5").Formula = '=IF(기초자료입력!C9<>"",기초자료입력!C9,"")'; $ws.Range("E5").Value2 = "시행일자"; $ws.Range("F5").Formula = '=IF(기초자료입력!C8<>"",TEXT(기초자료입력!C8,"yyyy-mm-dd"),"")'
+    $ws.Range("C7:H7").Merge() | Out-Null; $ws.Range("B7").Value2 = "수  신"; $ws.Range("C7").Value2 = "내부결재"; $ws.Range("C8:H8").Merge() | Out-Null; $ws.Range("B8").Value2 = "(경유)"
+    $ws.Range("C9:H9").Merge() | Out-Null; $ws.Range("B9").Value2 = "제  목"; $ws.Range("C9").Formula = '=IF(기초자료입력!C22<>"",기초자료입력!C22,IF(기초자료입력!C5<>"",기초자료입력!C5,"20○○")&"학년도 교복 학교주관구매 제안서 평가위원회 개최")'; $ws.Range("C9").Font.Bold = $true
+    $ws.Range("B11:H11").Merge() | Out-Null; $ws.Range("B11").Formula = '="1. "&IF(기초자료입력!C23<>"",기초자료입력!C23,"관련 문서를 확인하십시오.")'
+    $ws.Range("B13:H14").Merge() | Out-Null; $ws.Range("B13").Formula = '="2. "&IF(기초자료입력!C5<>"",기초자료입력!C5,"20○○")&"학년도 교복 학교주관구매 제안서 평가위원회를 아래와 같이 개최하고자 합니다."'; $ws.Range("B13").WrapText = $true; $ws.Rows.Item(13).RowHeight = 28
+    $ws.Range("B16").Value2 = "가. 일시："; $ws.Range("C16:H16").Merge() | Out-Null; $ws.Range("C16").Interior.Color = 16777164
+    $ws.Range("B17").Value2 = "나. 장소："; $ws.Range("C17:H17").Merge() | Out-Null; $ws.Range("C17").Interior.Color = 16777164
+    $ws.Range("B18").Value2 = "다. 대상："; $ws.Range("C18:H18").Merge() | Out-Null; $ws.Range("C18").Formula = '=IF(COUNTA(기초자료입력!B58:B67)>0,"평가위원 "&COUNTA(기초자료입력!B58:B67)&"명","")'
+    $headersF34 = @("순","구분","성명","비고"); $colsF34 = @("B","C","D","E")
+    for ($i = 0; $i -lt $headersF34.Count; $i++) { $ws.Range("$($colsF34[$i])20").Value2 = $headersF34[$i] }
+    for ($i = 0; $i -lt 10; $i++) { $r = 21 + $i; $srcRow = 58 + $i; $role = if ($i -eq 0) { "위원장" } elseif ($i -eq 1) { "부위원장" } else { "위원" }; $ws.Range("B$r").Formula = "=IF(기초자료입력!B$srcRow<>`"`",$($i+1),`"`")"; $ws.Range("C$r").Formula = "=IF(기초자료입력!B$srcRow<>`"`",`"$role`",`"`")"; $ws.Range("D$r").Formula = "=IF(기초자료입력!C$srcRow<>`"`",기초자료입력!C$srcRow,`"`")" }
+    $ws.Range("B20:E30").Borders.LineStyle = 1; $ws.Range("B20:E20").Interior.Color = 15987699; $ws.Range("B20:E20").Font.Bold = $true; $ws.Range("B20:E30").HorizontalAlignment = -4108
+    $ws.Range("B32:H32").Merge() | Out-Null; $ws.Range("B32").Value2 = "라. 안내방법：개별통지. 끝."
+    $ws.Range("F35").Value2 = "담당"; $ws.Range("G35").Value2 = "협조자"; $ws.Range("H35").Value2 = "교장"; $ws.Range("B36").Value2 = "시행"; $ws.Range("C36:E36").Merge() | Out-Null; $ws.Range("C36").Formula = '=IF(기초자료입력!C9<>"",기초자료입력!C9,"")'; $ws.Range("F36").Value2 = "접수"; $ws.Range("G36:H36").Merge() | Out-Null
+    $ws.Range("B37").Value2 = "우편번호"; $ws.Range("D37").Value2 = "주소"; $ws.Range("E37:H37").Merge() | Out-Null; $ws.Range("B38").Value2 = "전화"; $ws.Range("D38").Value2 = "전송(팩스)"; $ws.Range("F38").Value2 = "이메일"; $ws.Range("G38:H38").Merge() | Out-Null
+    $ws.Range("B5:H38").Font.Size = 9; $ws.Range("B5,E5,B7,B8,B9,B11,B16:B18,B20:E20,F35:H35,B36,F36,B37,D37,B38,D38,F38").Font.Bold = $true; $ws.Range("B5:H9,F35:H38").Borders.LineStyle = 1
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 9; $ws.Columns.Item("C").ColumnWidth = 14; $ws.Columns.Item("D").ColumnWidth = 16; $ws.Columns.Item("E").ColumnWidth = 12; $ws.Columns.Item("F").ColumnWidth = 8; $ws.Columns.Item("G").ColumnWidth = 8; $ws.Columns.Item("H").ColumnWidth = 8
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 1.0; $ps.BottomMargin = CmToPt 1.0; $ps.LeftMargin = CmToPt 1.0; $ps.RightMargin = CmToPt 1.0; $ps.HeaderMargin = CmToPt 0.5; $ps.FooterMargin = CmToPt 0.5; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$A`$1:`$H`$38"
+    $hbF34 = $ws.HPageBreaks.Count; $vbF34 = $ws.VPageBreaks.Count; L "F-034 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=$hbF34, VPageBreaks=$vbF34"
+
+    # ---- 7y. F-037 평가위원회 참석 등록부 ----
+    # 원본 HWPX 66쪽 [13-1] 대조. 위원 역할(R-01)만 표시하고 성명·서명(R-02 및 자필란)은
+    # 빈 양식으로 유지한다. C-01/C-02/D-02는 공통 문서 정보로만 반영한다.
+    $wsF37 = $wbNew.Worksheets.Add(); $wsF37.Name = "F-037_평가위원회참석등록부"; $ws = $wsF37
+    $ws.Range("A1").Value2 = "[검토중 — 담당자 최종 확인 후 사용] 원본 HWPX 66쪽 [13-1] 대조. 참석자 성명·서명은 자필 작성 공란임"
+    $ws.Range("A1").Font.Size = 8; $ws.Range("A1").Font.Color = 255
+    $ws.Range("B3:H3").Merge() | Out-Null; $ws.Range("B3").Formula = '=IF(기초자료입력!C5<>"",기초자료입력!C5&"학년도 ","")&"교복선정 평가위원회 참석 등록부"'; $ws.Range("B3").Font.Size = 15; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108
+    $ws.Range("B5:H5").Merge() | Out-Null; $ws.Range("B5").Formula = '=IF(기초자료입력!C4<>"",기초자료입력!C4,"")&IF(기초자료입력!C22<>""," · "&기초자료입력!C22,"")'; $ws.Range("B5").HorizontalAlignment = -4108
+    $ws.Range("B7").Value2 = "1. 일시："; $ws.Range("C7:H7").Merge() | Out-Null
+    $ws.Range("B8").Value2 = "2. 장소："; $ws.Range("C8:H8").Merge() | Out-Null; $ws.Range("C8").Value2 = "회의실"
+    $ws.Range("B10:H10").Merge() | Out-Null; $ws.Range("B10").Value2 = "3. 참석자 현황"; $ws.Range("B10").Font.Bold = $true
+    $headersF37 = @("순","직위","성명","서명","비고"); $colsF37 = @("B","C","D","E","F")
+    for ($i = 0; $i -lt $headersF37.Count; $i++) { $ws.Range("$($colsF37[$i])11").Value2 = $headersF37[$i] }
+    for ($i = 0; $i -lt 10; $i++) {
+        $r = 12 + $i; $srcRow = 58 + $i
+        $ws.Range("B$r").Value2 = [double]($i + 1)
+        $ws.Range("C$r").Formula = "=IF(기초자료입력!B$srcRow<>`"`",기초자료입력!B$srcRow,`"`")"
+    }
+    $ws.Range("B11:F21").Borders.LineStyle = 1; $ws.Range("B11:F11").Interior.Color = 15987699; $ws.Range("B11:F11").Font.Bold = $true; $ws.Range("B11:F21").HorizontalAlignment = -4108
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 7; $ws.Columns.Item("C").ColumnWidth = 16; $ws.Columns.Item("D").ColumnWidth = 16; $ws.Columns.Item("E").ColumnWidth = 15; $ws.Columns.Item("F").ColumnWidth = 15; $ws.Columns.Item("G").ColumnWidth = 2; $ws.Columns.Item("H").ColumnWidth = 2
+    $ws.Range("B3:H21").Font.Size = 10
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 1.27; $ps.BottomMargin = CmToPt 1.27; $ps.LeftMargin = CmToPt 1.27; $ps.RightMargin = CmToPt 1.27; $ps.HeaderMargin = CmToPt 0.5; $ps.FooterMargin = CmToPt 0.5; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$A`$1:`$H`$21"
+    $hbF37 = $ws.HPageBreaks.Count; $vbF37 = $ws.VPageBreaks.Count; L "F-037 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=$hbF37, VPageBreaks=$vbF37"
+
+    # ---- 7w. F-038 제안서 설명 업체 참가 등록부 ----
+    # 원본 HWPX 67쪽 [13-2] 대조. 업체명(R-03)만 반영하고 대표자·전화·대리인·서명 등은 빈칸이다.
+    $wsF38 = $wbNew.Worksheets.Add(); $wsF38.Name = "F-038_업체참가등록부"; $ws = $wsF38
+    $ws.Range("A1").Value2 = "[검토중 — 담당자 최종 확인 후 사용] 원본 HWPX 67쪽 [13-2] 대조. 업체명 외 개인정보·연락처·대리인 정보는 수기 공란임"
+    $ws.Range("A1").Font.Size = 8; $ws.Range("A1").Font.Color = 255
+    $ws.Range("B3:I3").Merge() | Out-Null; $ws.Range("B3").Value2 = "제안서 설명 업체 참가 등록부"; $ws.Range("B3").Font.Size = 15; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108
+    $ws.Range("B5:I5").Merge() | Out-Null; $ws.Range("B5").Formula = '=IF(기초자료입력!C4<>"",기초자료입력!C4,"")&IF(기초자료입력!C5<>""," ("&기초자료입력!C5&"학년도)","")&IF(기초자료입력!C22<>""," · "&기초자료입력!C22,"")'; $ws.Range("B5").HorizontalAlignment = -4108
+    $ws.Range("B7:D7").Merge() | Out-Null; $ws.Range("B7").Value2 = "회사"; $ws.Range("E7:G7").Merge() | Out-Null; $ws.Range("E7").Value2 = "제안자"; $ws.Range("H7:H8").Merge() | Out-Null; $ws.Range("H7").Value2 = "제안심사" + [Environment]::NewLine + "관리번호"; $ws.Range("I7:I8").Merge() | Out-Null; $ws.Range("I7").Value2 = "비고"
+    $headersF38 = @("업체명","대표자","전화번호","직위","접수인" + [Environment]::NewLine + "(대리인)","전화번호")
+    for ($i = 0; $i -lt $headersF38.Count; $i++) { $ws.Cells.Item(8, 2 + $i).Value2 = $headersF38[$i] }
+    for ($i = 0; $i -lt 10; $i++) { $r = 9 + $i; $srcRow = 44 + $i; $ws.Range("B$r").Formula = "=IF(기초자료입력!B$srcRow<>`"`",기초자료입력!B$srcRow,`"`")" }
+    $ws.Range("B7:I18").Borders.LineStyle = 1; $ws.Range("B7:I8").Interior.Color = 15987699; $ws.Range("B7:I8").Font.Bold = $true; $ws.Range("B7:I18").HorizontalAlignment = -4108; $ws.Range("B7:I18").VerticalAlignment = -4108; $ws.Range("B7:I18").WrapText = $true
+    $ws.Range("B20:I20").Merge() | Out-Null; $ws.Range("B20").Value2 = "※ 제안 심사 관리 번호"; $ws.Range("B20").Font.Bold = $true
+    $ws.Range("B21:I21").Merge() | Out-Null; $ws.Range("B21").Value2 = "○ 제안서 블라인드 평가를 위한 관리번호"
+    $ws.Range("B22:I22").Merge() | Out-Null; $ws.Range("B22").Value2 = "○ 접수 완료 후 제안평가 심사 실시(30분 이상 확보) 전 추첨하여 관리번호 부여"
+    $ws.Range("B23:I23").Merge() | Out-Null; $ws.Range("B23").Value2 = "- 관리번호는 교복 샘플과 평가위원용 제안서에 표기하여 관리한다."
+    $ws.Columns.Item("A").ColumnWidth = 2.5; foreach ($col in @("B","C","D","E","F","G","H","I")) { $ws.Columns.Item($col).ColumnWidth = 8 }
+    $ws.Rows.Item(7).RowHeight = 28; $ws.Rows.Item(8).RowHeight = 30; $ws.Range("B3:I23").Font.Size = 9
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 1.0; $ps.BottomMargin = CmToPt 1.0; $ps.LeftMargin = CmToPt 1.0; $ps.RightMargin = CmToPt 1.0; $ps.HeaderMargin = CmToPt 0.5; $ps.FooterMargin = CmToPt 0.5; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$A`$1:`$I`$23"
+    $hbF38 = $ws.HPageBreaks.Count; $vbF38 = $ws.VPageBreaks.Count; L "F-038 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=$hbF38, VPageBreaks=$vbF38"
+
+    # ---- 7x. F-040 위원 청렴 및 보안 서약서 ----
+    # 원본 HWPX 69쪽 [13-4] 대조. 서약자 성명·서명은 자동 반영하지 않는 단일 빈 양식이다.
+    $wsF40 = $wbNew.Worksheets.Add(); $wsF40.Name = "F-040_위원청렴보안서약서"; $ws = $wsF40
+    $ws.Range("A1").Value2 = "[검토중 — 담당자 최종 확인 후 사용] 원본 HWPX 69쪽 [13-4] 대조. 서약자 성명·서명은 자필 작성 공란임"
+    $ws.Range("A1").Font.Size = 8; $ws.Range("A1").Font.Color = 255
+    $ws.Range("B3:H3").Merge() | Out-Null; $ws.Range("B3").Value2 = "교복선정위원회 위원 청렴 및 보안 서약서"; $ws.Range("B3").Font.Size = 15; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108
+    $ws.Range("B5:H5").Merge() | Out-Null; $ws.Range("B5").Formula = '=IF(기초자료입력!C22<>"","평가 안건: "&기초자료입력!C22,"")'; $ws.Range("B5").HorizontalAlignment = -4108
+    $ws.Range("B7:H8").Merge() | Out-Null; $ws.Range("B7").Formula = '="본인은 년 월 일 "&IF(기초자료입력!C4<>"",기초자료입력!C4,"○○학교")&"에서 실시하는 "&IF(기초자료입력!C5<>"",기초자료입력!C5&"학년도 ","")&"교복 학교주관구매업체 선정을 위한 평가함에 있어 「부패 없는 투명한 사회」 구현 등을 위하여 다음 사항을 준수할 것을 서약합니다."'; $ws.Range("B7").WrapText = $true
+    $pledgesF40 = @(
+        "1. " + '=IF(기초자료입력!C5<>"",기초자료입력!C5,"20○○")&"학년도 "&IF(기초자료입력!C4<>"",기초자료입력!C4,"○○학교")&" 교복 학교주관구매업체 선정을 위해 제시된 항목에 따라 객관적이고 공정하게 심사할 것을 약속합니다."',
+        "2. " + '"○○학교 교복 학교 주관 교복선정 위원회 지위를 이용하여 관련업체로부터 어떠한 경우에도 금품·향응·편의 등을 수수하거나 제공받지 않을 것이며, 이러한 상황이 발생하면 사업부서에 통보하여 공정한 평가가 이루어지도록 하겠습니다."',
+        "3. " + '"업무상 취득한 비밀을 준수하고 보안관계 규정 및 지침을 성실히 수행하겠습니다."',
+        "4. " + '"평가와 관련하여 알게 된 업무상 비밀을 타인에게 누설하지 않겠으며, 업무상 취득한 비밀을 누설할 때에는 관계법규에 따라 처벌을 받는 것에 이의를 제기하지 않겠습니다."'
+    )
+    for ($i = 0; $i -lt $pledgesF40.Count; $i++) { $r = 10 + ($i * 2); $ws.Range("B$r:H$($r+1)").Merge() | Out-Null; $ws.Range("B$r").Formula = $pledgesF40[$i]; $ws.Range("B$r").WrapText = $true; $ws.Rows.Item($r).RowHeight = if ($i -eq 1 -or $i -eq 3) { 42 } else { 30 } }
+    $ws.Range("B19:H19").Merge() | Out-Null; $ws.Range("B19").Value2 = "20 년 월 일"; $ws.Range("B19").HorizontalAlignment = -4108
+    $ws.Range("B21:H21").Merge() | Out-Null; $ws.Range("B21").Formula = '=IF(기초자료입력!B58<>"","위원 구분: "&기초자료입력!B58,"")'; $ws.Range("B21").HorizontalAlignment = -4108
+    $ws.Range("B23:H23").Merge() | Out-Null; $ws.Range("B23").Value2 = "서 약 자  성 명 :                         (인)"; $ws.Range("B23").HorizontalAlignment = -4108
+    $ws.Range("B25:H25").Merge() | Out-Null; $ws.Range("B25").Formula = '=IF(기초자료입력!C4<>"",기초자료입력!C4,"○○○학교")&"장 귀하"'; $ws.Range("B25").HorizontalAlignment = -4108
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 13; for ($c = 3; $c -le 8; $c++) { $ws.Columns.Item($c).ColumnWidth = 9 }
+    $ws.Range("B3:H25").Font.Size = 10
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 1.27; $ps.BottomMargin = CmToPt 1.27; $ps.LeftMargin = CmToPt 1.27; $ps.RightMargin = CmToPt 1.27; $ps.HeaderMargin = CmToPt 0.5; $ps.FooterMargin = CmToPt 0.5; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$A`$1:`$H`$25"
+    $hbF40 = $ws.HPageBreaks.Count; $vbF40 = $ws.VPageBreaks.Count; L "F-040 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=$hbF40, VPageBreaks=$vbF40"
 
     # ---- 8. 학교정보 (원본 공개 데이터 표본 복사 — 학생·학부모 개인정보 아님) ----
     $wsSchool = $wbNew.Worksheets.Add()

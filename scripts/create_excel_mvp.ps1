@@ -13,7 +13,7 @@ if ([string]::IsNullOrWhiteSpace($InventoryPath)) {
     $InventoryPath = Join-Path $PSScriptRoot '..\서식_인벤토리.md'
 }
 
-function Set-TitleStyle($range) {
+function Format-TitleStyle($range) {
     $range.Font.Bold = $true
     $range.Font.Size = 16
     $range.Font.Color = 16777215
@@ -21,7 +21,7 @@ function Set-TitleStyle($range) {
     $range.HorizontalAlignment = -4108
 }
 
-function Set-HeaderStyle($range) {
+function Format-HeaderStyle($range) {
     $range.Font.Bold = $true
     $range.Font.Color = 16777215
     $range.Interior.Color = 12611584
@@ -74,10 +74,10 @@ try {
     $workflow = $workbook.Worksheets.Item('01_교복구매_워크플로우')
     $workflow.Range('A1:F1').Merge()
     $workflow.Range('A1').Value2 = '교복 학교주관구매 업무 흐름'
-    Set-TitleStyle $workflow.Range('A1:F1')
+    Format-TitleStyle $workflow.Range('A1:F1')
     $headers = @('순서', '업무 단계', '주요 확인 사항', '관련 Form ID', '완료 여부', '비고')
     for ($c = 1; $c -le $headers.Count; $c++) { $workflow.Cells.Item(3, $c).Value2 = $headers[$c - 1] }
-    Set-HeaderStyle $workflow.Range('A3:F3')
+    Format-HeaderStyle $workflow.Range('A3:F3')
     $stages = @(
         @('1', '기초자료 입력', '학교·사업·일정을 입력하고 필수값을 확인', '공통', '미완료', ''),
         @('2', '구매계획·위원회', '계획 및 위원회 관련 서식을 확인', 'F-001~F-006', '미완료', ''),
@@ -102,10 +102,10 @@ try {
     $inputSheet = $workbook.Worksheets.Item('02_기초자료_입력')
     $inputSheet.Range('A1:D1').Merge()
     $inputSheet.Range('A1').Value2 = '기초자료 입력 — 보호 필드는 입력하지 않음'
-    Set-TitleStyle $inputSheet.Range('A1:D1')
+    Format-TitleStyle $inputSheet.Range('A1:D1')
     $headers = @('필드 ID', '입력 항목', '값', '검증·안내')
     for ($c = 1; $c -le $headers.Count; $c++) { $inputSheet.Cells.Item(3, $c).Value2 = $headers[$c - 1] }
-    Set-HeaderStyle $inputSheet.Range('A3:D3')
+    Format-HeaderStyle $inputSheet.Range('A3:D3')
     $fields = @(
         @('C-01', '학교명', '필수, 2~100자'), @('C-02', '학년도', '필수, 2000~2100'), @('C-03', '담당부서', '조건부, 2~100자'),
         @('C-04', '담당자 직위', '조건부, 2~50자'), @('C-05', '문서 발행일', '조건부, 날짜'), @('C-06', '문서번호', '조건부, 기관 규칙 확인'),
@@ -135,10 +135,10 @@ try {
     $selection = $workbook.Worksheets.Item('03_서식선택_출력')
     $selection.Range('A1:G1').Merge()
     $selection.Range('A1').Value2 = '서식 선택 및 출력 준비 — HWPX 출력은 P2 검증 완료 전 비활성'
-    Set-TitleStyle $selection.Range('A1:G1')
+    Format-TitleStyle $selection.Range('A1:G1')
     $headers = @('선택', 'Form ID', '서식명', '업무 단계', '유형', '필수값 상태', '출력 상태')
     for ($c = 1; $c -le $headers.Count; $c++) { $selection.Cells.Item(3, $c).Value2 = $headers[$c - 1] }
-    Set-HeaderStyle $selection.Range('A3:G3')
+    Format-HeaderStyle $selection.Range('A3:G3')
     $row = 4
     foreach ($item in $inventoryRows) {
         $selection.Cells.Item($row, 1).Value2 = '아니오'
@@ -161,13 +161,13 @@ try {
     $db.Range('A2').Value2 = '일반경쟁입찰'
     $db.Range('A3').Value2 = '제한경쟁입찰'
     $db.Range('A4').Value2 = '수의계약'
-    Set-HeaderStyle $db.Range('A1')
+    Format-HeaderStyle $db.Range('A1')
     $db.Visible = 0
 
     $refData = $workbook.Worksheets.Item('Ref_data')
     $headers = @('필드 ID', '필드명', '구분', '자동 처리 원칙')
     for ($c = 1; $c -le $headers.Count; $c++) { $refData.Cells.Item(1, $c).Value2 = $headers[$c - 1] }
-    Set-HeaderStyle $refData.Range('A1:D1')
+    Format-HeaderStyle $refData.Range('A1:D1')
     $calculations = @(@('K-01', '품목별 금액', '계산', '수량×단가'), @('K-02', '합계금액', '계산', '품목별 금액 합계'), @('K-03', '평가 총점', '계산', '평가항목 점수 합계'), @('K-04', '만족도 평균', '계산', '승인된 비식별 집계값만 사용'))
     $row = 2
     foreach ($calculation in $calculations) { for ($c = 1; $c -le 4; $c++) { $refData.Cells.Item($row, $c).Value2 = $calculation[$c - 1] }; $row++ }
@@ -176,7 +176,7 @@ try {
 
     $schools = $workbook.Worksheets.Item('학교정보')
     $schools.Range('A1').Value2 = '학교명'; $schools.Range('B1').Value2 = '비고'
-    Set-HeaderStyle $schools.Range('A1:B1')
+    Format-HeaderStyle $schools.Range('A1:B1')
     $schools.Range('A2').Value2 = '직접 입력'; $schools.Range('B2').Value2 = '학교별 기준정보는 기관 확인 후 별도 관리'
     $schools.Columns('A:B').AutoFit() | Out-Null
     $schools.Visible = 0
@@ -184,7 +184,7 @@ try {
     $metadata = $workbook.Worksheets.Item('서식Metadata')
     $headers = @('Form ID', '서식명', '업무 단계', '유형')
     for ($c = 1; $c -le $headers.Count; $c++) { $metadata.Cells.Item(1, $c).Value2 = $headers[$c - 1] }
-    Set-HeaderStyle $metadata.Range('A1:D1')
+    Format-HeaderStyle $metadata.Range('A1:D1')
     $row = 2
     foreach ($item in $inventoryRows) { $metadata.Cells.Item($row, 1).Value2 = $item.FormId; $metadata.Cells.Item($row, 2).Value2 = $item.Name; $metadata.Cells.Item($row, 3).Value2 = $item.Phase; $metadata.Cells.Item($row, 4).Value2 = $item.Type; $row++ }
     $metadata.Columns('A:D').AutoFit() | Out-Null
@@ -192,8 +192,8 @@ try {
 
     $guide = $workbook.Worksheets.Item('사용설명서')
     $guide.Range('A1:D1').Merge(); $guide.Range('A1').Value2 = '교복구매 길라잡이 Excel MVP 사용설명서'
-    Set-TitleStyle $guide.Range('A1:D1')
-    $guide.Range('A3').Value2 = '순서'; $guide.Range('B3').Value2 = '사용 방법'; Set-HeaderStyle $guide.Range('A3:B3')
+    Format-TitleStyle $guide.Range('A1:D1')
+    $guide.Range('A3').Value2 = '순서'; $guide.Range('B3').Value2 = '사용 방법'; Format-HeaderStyle $guide.Range('A3:B3')
     $instructions = @('02_기초자료_입력 시트의 노란색 셀에 업무용 공통값만 입력', '03_서식선택_출력 시트에서 필요한 Form ID를 예로 선택', '필수값 상태가 준비인지 확인한 뒤 Excel/PDF 출력 준비', '학생·학부모 개인정보, 서명, 직인 및 개별 설문·치수는 입력하지 않음', 'HWPX 출력은 별도 P2 검증 완료 전까지 사용하지 않음')
     $row = 4
     foreach ($instruction in $instructions) { $guide.Cells.Item($row, 1).Value2 = "$($row - 3)"; $guide.Cells.Item($row, 2).Value2 = $instruction; $row++ }

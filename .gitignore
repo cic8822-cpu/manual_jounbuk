@@ -2,6 +2,6 @@
 nul
 
 # Excel 검증 중 생성되는 마스킹 테스트 PDF와 일회성 검증 사본은 배포·Git 대상이 아님
-artifacts/excel/_validation/
+artifacts/excel/_validation*/
 artifacts/excel/output/
 artifacts/excel/build.xlsm

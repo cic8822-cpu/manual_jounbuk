@@ -4,7 +4,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $defaultTargetPath = Join-Path $root 'artifacts\excel\build.xlsm'
 $targetPath = if ([string]::IsNullOrWhiteSpace($env:UNIFORM_EXCEL_BUILD_PATH)) { $defaultTargetPath } else { $env:UNIFORM_EXCEL_BUILD_PATH }
 $logPath = Join-Path $root '_workspace\03_excel\verify_v1_log.txt'
-$validationDirectory = Join-Path $root 'artifacts\excel\_validation'
+$validationDirectory = Join-Path $root ('artifacts\excel\_validation_' + $PID)
 $validationPath = Join-Path $validationDirectory '교복구매_길라잡이_Excel_v1.xlsm'
 $legacyValidationPath = Join-Path $root 'artifacts\excel\~검증용_교복구매_길라잡이_Excel_v1.xlsm'
 $failures = [System.Collections.Generic.List[string]]::new()
@@ -93,9 +93,9 @@ try {
 
     # 4. 시트 목록
     L "시트 목록: $((@($wb.Worksheets) | ForEach-Object { $_.Name }) -join ', ')"
-    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', 'DB_업체', 'DB_위원', 'DB_평가', 'DB_정량평가', 'DB_정성평가', 'DB_자기평점', '서식선택_출력', 'F-001_위원회구성기안', 'F-002_위원수락확인서', 'F-003_위원청렴보안서약서', 'F-004_구매추진계획수립기안문', 'F-005_구매추진계획안', 'F-006_운영위원회심의안', 'F-007_구매요청기안문', 'F-014_평가항목배점기준', 'F-015_정량적평가', 'F-016_정성적평가', 'F-017_제출서류자기확인서', 'F-018_정량적평가자기평점표', 'F-019_입찰참가신청서', 'F-020_입찰참가신고서', 'F-021_교복납품제안서', 'F-022_교복납품실적표', 'F-023_교복제조사양서', 'F-024_단가비율표', 'F-025_교복AS계획서', 'F-041_낙찰자결정', 'F-042_낙찰자결정통보', 'F-043_계약체결', '학교정보', '학교검색', '절차안내', '계약방법안내')
+    $requiredSheets = @('사용설명서', '기초자료입력', 'DB', 'DB_품목', 'DB_업체', 'DB_위원', 'DB_평가', 'DB_정량평가', 'DB_정성평가', 'DB_자기평점', '서식선택_출력', 'F-001_위원회구성기안', 'F-002_위원수락확인서', 'F-003_위원청렴보안서약서', 'F-004_구매추진계획수립기안문', 'F-005_구매추진계획안', 'F-006_운영위원회심의안', 'F-007_구매요청기안문', 'F-014_평가항목배점기준', 'F-015_정량적평가', 'F-016_정성적평가', 'F-017_제출서류자기확인서', 'F-018_정량적평가자기평점표', 'F-019_입찰참가신청서', 'F-020_입찰참가신고서', 'F-021_교복납품제안서', 'F-022_교복납품실적표', 'F-023_교복제조사양서', 'F-024_단가비율표', 'F-025_교복AS계획서', 'F-032_제안서접수결과', 'F-033_제안서접수대장', 'F-034_평가위원회개최', 'F-037_평가위원회참석등록부', 'F-038_업체참가등록부', 'F-040_위원청렴보안서약서', 'F-041_낙찰자결정', 'F-042_낙찰자결정통보', 'F-043_계약체결', '학교정보', '학교검색', '절차안내', '계약방법안내')
     $sheetNames = @($wb.Worksheets | ForEach-Object { $_.Name })
-    Assert-Check ($sheetNames.Count -eq 37 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) 'F-041~F-043을 포함한 필수 37개 시트가 모두 존재함'
+    Assert-Check ($sheetNames.Count -eq 43 -and @($requiredSheets | Where-Object { $_ -notin $sheetNames }).Count -eq 0) 'F-032·F-033·F-034를 포함한 필수 43개 시트가 모두 존재함'
     $wsProtectedDB = $wb.Worksheets.Item('DB')
     $wsProtectedItems = $wb.Worksheets.Item('DB_품목')
     $wsProtectedVendors = $wb.Worksheets.Item('DB_업체')
@@ -122,7 +122,7 @@ try {
     Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B5').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B6').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsMethod.Range('B7').Value2) -and $wsMethod.Buttons('btn계약방법반영').OnAction -eq '계약방법안내_기초자료반영') '계약방법안내가 빈 확인값으로 시작하며 반영 버튼이 존재함'
 
     # 5. A4 1쪽 자연 충족 재확인 (F-007, F-014, F-024)
-    foreach ($sn in @("F-001_위원회구성기안","F-002_위원수락확인서","F-003_위원청렴보안서약서","F-004_구매추진계획수립기안문","F-006_운영위원회심의안","F-007_구매요청기안문","F-014_평가항목배점기준","F-015_정량적평가","F-016_정성적평가","F-017_제출서류자기확인서","F-018_정량적평가자기평점표","F-019_입찰참가신청서","F-020_입찰참가신고서","F-021_교복납품제안서","F-022_교복납품실적표","F-023_교복제조사양서","F-024_단가비율표","F-025_교복AS계획서","F-041_낙찰자결정","F-042_낙찰자결정통보","F-043_계약체결")) {
+    foreach ($sn in @("F-001_위원회구성기안","F-002_위원수락확인서","F-003_위원청렴보안서약서","F-004_구매추진계획수립기안문","F-006_운영위원회심의안","F-007_구매요청기안문","F-014_평가항목배점기준","F-015_정량적평가","F-016_정성적평가","F-017_제출서류자기확인서","F-018_정량적평가자기평점표","F-019_입찰참가신청서","F-020_입찰참가신고서","F-021_교복납품제안서","F-022_교복납품실적표","F-023_교복제조사양서","F-024_단가비율표","F-025_교복AS계획서","F-032_제안서접수결과","F-033_제안서접수대장","F-034_평가위원회개최","F-041_낙찰자결정","F-042_낙찰자결정통보","F-043_계약체결")) {
         $ws = $wb.Worksheets.Item($sn)
         $hb = $ws.HPageBreaks.Count
         $vb = $ws.VPageBreaks.Count
@@ -320,6 +320,54 @@ try {
     Assert-Check ($bodyTextF06 -notmatch '홍길동' -and $bodyTextF06 -notmatch '위원 ○○○') 'F-006 본문 어디에도 실명 형태 문자열이 출력되지 않음(마스킹 식별표시만 허용)'
     Assert-Check ($wsF06.Range('B40').Value2 -match '참고 서식' -and [bool]$excel.Run('검증_F006출력가능')) 'F-006 참고 서식 안내문이 존재하고 선택 출력을 허용함'
 
+    $wsF32 = $wb.Worksheets.Item('F-032_제안서접수결과')
+    $excel.CalculateFullRebuild()
+    Assert-Check ($wsF32.Range('B3').Value2 -match '테스트초등학교' -and $wsF32.Range('B17').Value2 -eq '접수번호' -and $wsF32.Range('D18').Value2 -eq '업체명' -and $wsF32.Range('D19').Value2 -eq '검증업체가' -and $wsF32.Range('D20').Value2 -eq '검증업체나') 'F-032 원문 대조 표와 업체 반복행 2건이 자동 반영됨'
+    Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsF32.Range('C19').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF32.Range('E19').Value2)) 'F-032 접수일자·대표자는 개인정보 및 실제 접수값이므로 수기 공란으로 보존됨'
+    Assert-Check ([bool]$excel.Run('검증_F032출력가능')) 'F-032 선택 출력이 공통 필수값과 유효한 업체 반복행을 요구함'
+    $wsIn.Range('B44:B53').ClearContents(); $excel.CalculateFullRebuild()
+    Assert-Check (-not [bool]$excel.Run('검증_F032출력가능')) 'F-032 선택 출력이 업체명 누락을 거부함'
+    $wsIn.Range('B44').Value2 = '검증업체가'; $wsIn.Range('B45').Value2 = '검증업체나'
+
+    $wsF33 = $wb.Worksheets.Item('F-033_제안서접수대장')
+    $excel.CalculateFullRebuild()
+    Assert-Check ($wsF33.Range('B3').Value2 -match '2026학년도' -and $wsF33.Range('D8').Value2 -eq '검증업체가' -and $wsF33.Range('D9').Value2 -eq '검증업체나' -and $wsF33.Range('C8').Value2 -eq 1 -and $wsF33.Range('C9').Value2 -eq 2) 'F-033 원문 대조 대장 표와 업체 접수순번·업체명 반복행이 자동 반영됨'
+    Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsF33.Range('B8').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF33.Range('E8').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF33.Range('H8').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF33.Range('K8').Value2)) 'F-033 접수일·대표자·대리인·수령인은 자동 처리하지 않고 수기 공란으로 보존됨'
+    Assert-Check ([bool]$excel.Run('검증_F033출력가능')) 'F-033 선택 출력이 공통 필수값과 유효한 업체 반복행을 요구함'
+
+    $wsF34 = $wb.Worksheets.Item('F-034_평가위원회개최')
+    $excel.CalculateFullRebuild()
+    Assert-Check ($wsF34.Range('B3').Value2 -match '테스트초등학교' -and $wsF34.Range('B20').Value2 -eq '순' -and $wsF34.Range('C20').Value2 -eq '구분' -and $wsF34.Range('D21').Value2 -eq '위원 ○○' -and $wsF34.Range('C21').Value2 -eq '위원장') 'F-034 원문 대조 위원회 표와 역할·마스킹 식별표시가 자동 반영됨'
+    Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsF34.Range('C16').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF34.Range('C17').Value2)) 'F-034 개최 일시·장소는 문서별 실제값이므로 수기 공란으로 보존됨'
+    Assert-Check ([bool]$excel.Run('검증_F034출력가능')) 'F-034 선택 출력이 공통 필수값과 유효한 위원 반복행을 요구함'
+    $wsIn.Range('C58').Value2 = '홍길동'; $excel.CalculateFullRebuild()
+    Assert-Check (-not [bool]$excel.Run('검증_F034출력가능')) 'F-034 선택 출력이 실명 형태 위원 식별표시를 거부함'
+    $wsIn.Range('C58').Value2 = '위원 ○○'
+
+    $wsF37 = $wb.Worksheets.Item('F-037_평가위원회참석등록부')
+    $excel.CalculateFullRebuild()
+    Assert-Check ($wsF37.Range('B3').Value2 -match '교복선정 평가위원회 참석 등록부' -and $wsF37.Range('C12').Value2 -eq '교원위원' -and [string]::IsNullOrWhiteSpace([string]$wsF37.Range('D12').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF37.Range('E12').Value2)) 'F-037이 학년도·위원 구분만 반영하고 참석 성명·서명은 빈칸으로 보존함'
+    Assert-Check ([bool]$excel.Run('검증_F037출력가능')) 'F-037 선택 출력이 공통 필수값과 완전한 위원 반복행을 요구함'
+    $wsIn.Range('B58').ClearContents(); $excel.CalculateFullRebuild()
+    Assert-Check (-not [bool]$excel.Run('검증_F037출력가능')) 'F-037 선택 출력이 불완전 위원 반복행을 거부함'
+    $wsIn.Range('B58').Value2 = '교원위원'
+
+    $wsF38 = $wb.Worksheets.Item('F-038_업체참가등록부')
+    $excel.CalculateFullRebuild()
+    $wsIn.Range('B53').Value2 = '검증업체열'; $excel.CalculateFullRebuild()
+    Assert-Check ($wsF38.Range('B3').Value2 -eq '제안서 설명 업체 참가 등록부' -and $wsF38.Range('B9').Value2 -eq '검증업체가' -and $wsF38.Range('B18').Value2 -eq '검증업체열' -and [string]::IsNullOrWhiteSpace([string]$wsF38.Range('C9').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF38.Range('D9').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF38.Range('F9').Value2)) 'F-038이 업체 1~10행을 모두 반영하고 대표자·전화·대리인 개인정보는 빈칸으로 보존함'
+    $wsIn.Range('B53').ClearContents()
+    Assert-Check ([bool]$excel.Run('검증_F038출력가능')) 'F-038 선택 출력이 공통 필수값과 유효한 업체 반복행을 요구함'
+    $wsIn.Range('B44:B53').ClearContents(); $excel.CalculateFullRebuild()
+    Assert-Check (-not [bool]$excel.Run('검증_F038출력가능')) 'F-038 선택 출력이 업체명 누락을 거부함'
+    $wsIn.Range('B44').Value2 = '검증업체가'; $wsIn.Range('B45').Value2 = '검증업체나'
+
+    $wsF40 = $wb.Worksheets.Item('F-040_위원청렴보안서약서')
+    $excel.CalculateFullRebuild()
+    $bodyTextF40 = ($wsF40.Range('B3:H25').Cells | ForEach-Object { [string]$_.Value2 }) -join ' '
+    Assert-Check ($bodyTextF40 -match '청렴 및 보안 서약서' -and $bodyTextF40 -match '테스트초등학교' -and $bodyTextF40 -notmatch '홍길동' -and $wsF40.Range('B23').Value2 -match '성 명') 'F-040이 학교 공통정보만 반영하고 서약자 성명·서명은 자필 공란으로 보존함'
+    Assert-Check ([bool]$excel.Run('검증_F040출력가능')) 'F-040 선택 출력이 공통 필수값을 요구함'
+
     $wsF41 = $wb.Worksheets.Item('F-041_낙찰자결정')
     $wsF41.Range('I3').Value2 = 1
     $excel.CalculateFullRebuild()
@@ -332,7 +380,11 @@ try {
     $wsF41.Range('I3').Value2 = 1
     $excel.CalculateFullRebuild()
     Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsF41.Range('D21').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF41.Range('G21').Value2)) 'F-041 대표자·비고(주소)는 개인정보·업체 상세정보이므로 빈칸으로 보존됨'
-    Assert-Check ([bool]$excel.Run('검증_F041출력가능')) 'F-041 선택 출력이 유효한 낙찰 업체 선택을 허용함'
+    $wsF41.Range('C17').Value2 = 4500000; $wsF41.Range('E21').Value2 = 4400000; $wsF41.Range('F21').Value2 = 98
+    Assert-Check ([bool]$excel.Run('검증_F041출력가능')) 'F-041 선택 출력이 낙찰 업체·예정가격·투찰금액·낙찰률이 모두 있을 때만 허용함'
+    $wsF41.Range('E21').ClearContents()
+    Assert-Check (-not [bool]$excel.Run('검증_F041출력가능')) 'F-041 선택 출력이 업체명만 있고 투찰금액이 비어 있으면 거부함'
+    $wsF41.Range('E21').Value2 = 4400000
     $bodyTextF41 = ($wsF41.Range('B3:H29').Cells | ForEach-Object { [string]$_.Value2 }) -join ' '
     Assert-Check ($bodyTextF41 -notmatch '홍길동') 'F-041 본문 어디에도 대표자 실명 형태 문자열이 출력되지 않음'
 
@@ -345,7 +397,14 @@ try {
     Assert-Check ($wsF42.Range('B13').Value2 -match '2026\.02\.20\.') 'F-042 제출기한(B-07) 안내문이 기초자료입력 값을 반영함'
     Assert-Check ($wsF42.Range('B20').Value2 -match '품목별 산출내역서' -and $wsF42.Range('B21').Value2 -match '원단 의류 시험성적서' -and $wsF42.Range('B22').Value2 -match '사용인장계' -and $wsF42.Range('B23').Value2 -match '법인 등기사항증명서') 'F-042 제출서류 4개 항목이 원문과 일치함'
     Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsF42.Range('C17').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF42.Range('G17').Value2)) 'F-042 대표자·비고는 개인정보·업체 상세정보이므로 빈칸으로 보존됨'
-    Assert-Check ([bool]$excel.Run('검증_F042출력가능')) 'F-042 선택 출력이 유효한 낙찰 업체 선택을 허용함'
+    $wsF42.Range('D17').Value2 = 44000; $wsF42.Range('F17').Value2 = 4400000
+    Assert-Check ([bool]$excel.Run('검증_F042출력가능')) 'F-042 선택 출력이 낙찰 업체·단가·예정수량·반올림 계약금액·제출기한이 모두 일치할 때만 허용함'
+    $wsF42.Range('F17').Value2 = 4400001
+    Assert-Check (-not [bool]$excel.Run('검증_F042출력가능')) 'F-042 선택 출력이 단가×예정수량과 불일치한 계약체결금액을 거부함'
+    $wsF42.Range('F17').Value2 = 4400000
+    $wsF42.Range('F17').ClearContents()
+    Assert-Check (-not [bool]$excel.Run('검증_F042출력가능')) 'F-042 선택 출력이 업체명만 있고 계약체결금액이 비어 있으면 거부함'
+    $wsF42.Range('F17').Value2 = 4400000
     $bodyTextF42 = ($wsF42.Range('B3:H29').Cells | ForEach-Object { [string]$_.Value2 }) -join ' '
     Assert-Check ($bodyTextF42 -notmatch '홍길동') 'F-042 본문 어디에도 대표자 실명 형태 문자열이 출력되지 않음'
 
@@ -360,7 +419,10 @@ try {
     Assert-Check ([string]::IsNullOrWhiteSpace([string]$wsF43.Range('C22').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF43.Range('D22').Value2) -and [string]::IsNullOrWhiteSpace([string]$wsF43.Range('E22').Value2)) 'F-043 소재지·대표자·전화번호는 개인정보·업체 상세정보이므로 빈칸으로 보존됨'
     Assert-Check ($wsF43.Range('B25').Value2 -match '2026\.03\.01\.') 'F-043 납품기한(B-06)이 기초자료입력 값을 반영함'
     Assert-Check ($wsF43.Range('B28').Value2 -match '계약서\(초안\)' -and $wsF43.Range('B29').Value2 -match '교복 사양서' -and $wsF43.Range('B30').Value2 -match '교복 구매계약 특수조건' -and $wsF43.Range('B31').Value2 -match '입찰가격산출내역서' -and $wsF43.Range('B32').Value2 -match '기타서류') 'F-043 붙임 5개 항목이 원문과 일치함'
-    Assert-Check ([bool]$excel.Run('검증_F043출력가능')) 'F-043 선택 출력이 유효한 계약상대자 선택을 허용함'
+    Assert-Check ([bool]$excel.Run('검증_F043출력가능')) 'F-043 선택 출력이 계약상대자·단가·예정수량·납품기한이 모두 있을 때만 허용함'
+    $wsF43.Range('C16').Value2 = ''; $excel.CalculateFullRebuild()
+    Assert-Check (-not [bool]$excel.Run('검증_F043출력가능')) 'F-043 선택 출력이 업체명만 있고 계약 단가가 비어 있으면 거부함'
+    $wsF43.Range('C16').Value2 = 50000; $excel.CalculateFullRebuild()
     $bodyTextF43 = ($wsF43.Range('B3:H37').Cells | ForEach-Object { [string]$_.Value2 }) -join ' '
     Assert-Check ($bodyTextF43 -notmatch '홍길동') 'F-043 본문 어디에도 대표자 실명 형태 문자열이 출력되지 않음'
 
@@ -635,7 +697,7 @@ try {
     $lastRow = $wsSel.Cells.Item($wsSel.Rows.Count, 2).End(-4162).Row  # xlUp
     for ($r = 5; $r -le $lastRow; $r++) {
         $fid = $wsSel.Cells.Item($r, 2).Value2
-        if ($fid -eq "F-001" -or $fid -eq "F-002" -or $fid -eq "F-003" -or $fid -eq "F-004" -or $fid -eq "F-005" -or $fid -eq "F-006" -or $fid -eq "F-007" -or $fid -eq "F-014" -or $fid -eq "F-015" -or $fid -eq "F-016" -or $fid -eq "F-017" -or $fid -eq "F-018" -or $fid -eq "F-019" -or $fid -eq "F-020" -or $fid -eq "F-021" -or $fid -eq "F-022" -or $fid -eq "F-023" -or $fid -eq "F-024" -or $fid -eq "F-025") {
+        if ($fid -eq "F-001" -or $fid -eq "F-002" -or $fid -eq "F-003" -or $fid -eq "F-004" -or $fid -eq "F-005" -or $fid -eq "F-006" -or $fid -eq "F-007" -or $fid -eq "F-014" -or $fid -eq "F-015" -or $fid -eq "F-016" -or $fid -eq "F-017" -or $fid -eq "F-018" -or $fid -eq "F-019" -or $fid -eq "F-020" -or $fid -eq "F-021" -or $fid -eq "F-022" -or $fid -eq "F-023" -or $fid -eq "F-024" -or $fid -eq "F-025" -or $fid -eq "F-032" -or $fid -eq "F-033" -or $fid -eq "F-034" -or $fid -eq "F-037" -or $fid -eq "F-038" -or $fid -eq "F-040" -or $fid -eq "F-041" -or $fid -eq "F-042" -or $fid -eq "F-043") {
             $wsSel.Cells.Item($r, 1).Value2 = $true
         }
     }
@@ -648,7 +710,7 @@ try {
         L "FAIL: 매크로 선택서식_PDF저장() 실패: $($_.Exception.Message)"
     }
     $leftoverF015TempSheets = @($wb.Worksheets | Where-Object { $_.Name -like 'F015_임시_*' })
-    Assert-Check ($leftoverF015TempSheets.Count -eq 0) 'F-015 업체별 임시 인쇄 시트가 PDF 저장 후 정리됨'
+    Assert-Check ($leftoverF015TempSheets.Count -eq 0) 'F-015 업체별 임시 인쇄 시트가 PDF 저장 성공·실패와 관계없이 정리됨'
     $leftoverF016TempSheets = @($wb.Worksheets | Where-Object { $_.Name -like 'F016_임시_*' })
     Assert-Check ($leftoverF016TempSheets.Count -eq 0) 'F-016 업체별 임시 인쇄 시트가 PDF 저장 후 정리됨'
     $leftoverF017TempSheets = @($wb.Worksheets | Where-Object { $_.Name -like 'F017_임시_*' })
@@ -721,7 +783,7 @@ try {
             L "PID $excelProcessId Excel 프로세스가 Quit() 이후에도 남아 있어 강제 종료함"
         }
     }
-    if (Test-Path -LiteralPath $validationDirectory) { Remove-Item -LiteralPath $validationDirectory -Recurse -Force }
+    RemovePathWithRetry -path $validationDirectory -maxAttempts 10 -delayMs 500
 }
 
 if ($failures.Count -gt 0) {
