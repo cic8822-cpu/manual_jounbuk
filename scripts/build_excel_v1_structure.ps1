@@ -370,7 +370,7 @@ try {
         @("F-049","만족도 설문조사 실시","사후평가"), @("F-050","만족도 조사 설문지","사후평가"),
         @("F-051","만족도 설문조사 결과","사후평가"), @("F-052","만족도 조사 설문 결과 서식","사후평가")
     )
-    $implemented = @{ "F-001" = "F-001_위원회구성기안"; "F-002" = "F-002_위원수락확인서"; "F-003" = "F-003_위원청렴보안서약서"; "F-004" = "F-004_구매추진계획수립기안문"; "F-005" = "F-005_구매추진계획안"; "F-006" = "F-006_운영위원회심의안"; "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-016" = "F-016_정성적평가"; "F-017" = "F-017_제출서류자기확인서"; "F-018" = "F-018_정량적평가자기평점표"; "F-019" = "F-019_입찰참가신청서"; "F-020" = "F-020_입찰참가신고서"; "F-021" = "F-021_교복납품제안서"; "F-022" = "F-022_교복납품실적표"; "F-023" = "F-023_교복제조사양서"; "F-024" = "F-024_단가비율표"; "F-025" = "F-025_교복AS계획서"; "F-032" = "F-032_제안서접수결과"; "F-033" = "F-033_제안서접수대장"; "F-034" = "F-034_평가위원회개최"; "F-035" = "F-035_정량평가결과"; "F-036" = "F-036_제안서평가결과"; "F-037" = "F-037_평가위원회참석등록부"; "F-038" = "F-038_업체참가등록부"; "F-039" = "F-039_업체별제안서평가표"; "F-040" = "F-040_위원청렴보안서약서"; "F-041" = "F-041_낙찰자결정"; "F-042" = "F-042_낙찰자결정통보"; "F-043" = "F-043_계약체결"; "F-044" = "F-044_사전안내가정통신문안내"; "F-045" = "F-045_사전안내가정통신문"; "F-046" = "F-046_수요조사가정통신문안내" }
+    $implemented = @{ "F-001" = "F-001_위원회구성기안"; "F-002" = "F-002_위원수락확인서"; "F-003" = "F-003_위원청렴보안서약서"; "F-004" = "F-004_구매추진계획수립기안문"; "F-005" = "F-005_구매추진계획안"; "F-006" = "F-006_운영위원회심의안"; "F-007" = "F-007_구매요청기안문"; "F-014" = "F-014_평가항목배점기준"; "F-015" = "F-015_정량적평가"; "F-016" = "F-016_정성적평가"; "F-017" = "F-017_제출서류자기확인서"; "F-018" = "F-018_정량적평가자기평점표"; "F-019" = "F-019_입찰참가신청서"; "F-020" = "F-020_입찰참가신고서"; "F-021" = "F-021_교복납품제안서"; "F-022" = "F-022_교복납품실적표"; "F-023" = "F-023_교복제조사양서"; "F-024" = "F-024_단가비율표"; "F-025" = "F-025_교복AS계획서"; "F-032" = "F-032_제안서접수결과"; "F-033" = "F-033_제안서접수대장"; "F-034" = "F-034_평가위원회개최"; "F-035" = "F-035_정량평가결과"; "F-036" = "F-036_제안서평가결과"; "F-037" = "F-037_평가위원회참석등록부"; "F-038" = "F-038_업체참가등록부"; "F-039" = "F-039_업체별제안서평가표"; "F-040" = "F-040_위원청렴보안서약서"; "F-041" = "F-041_낙찰자결정"; "F-042" = "F-042_낙찰자결정통보"; "F-043" = "F-043_계약체결"; "F-044" = "F-044_사전안내가정통신문안내"; "F-045" = "F-045_사전안내가정통신문"; "F-046" = "F-046_수요조사가정통신문안내"; "F-048" = "F-048_교복구매안내신청수량파악" }
     $deferred = @{ "F-013" = "HWPX 우선순위 위임(표·이미지 복합조판)" }
 
     $row = 5
@@ -1677,6 +1677,48 @@ try {
     $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 1.0; $ps.BottomMargin = CmToPt 1.0; $ps.LeftMargin = CmToPt 1.0; $ps.RightMargin = CmToPt 1.0; $ps.HeaderMargin = CmToPt 0.5; $ps.FooterMargin = CmToPt 0.5; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$A`$1:`$H`$25"
     $hbF46 = $ws.HPageBreaks.Count; $vbF46 = $ws.VPageBreaks.Count
     L "F-046 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=$hbF46, VPageBreaks=$vbF46 (둘 다 0이면 A4 1쪽 자연 충족)"
+
+    # ---- 7w3. F-048 교복 구매 안내(신청 수량 파악) 가정통신문 ----
+    # 원본 HWPX 77쪽 [18-3] 대조. 학교명·학년도·구매명·제출기한(B-07)만 공통값으로 반영한다.
+    # 업체명·연락처·치수측정기간·단가는 원문 자체가 채우기 전 빈칸(○·0) 예시이고 대응 입력 필드가
+    # 없어 그대로 유지한다. 신청 수량 표와 이름·보호자 성명·전화번호 응답란은 절대 자동 반영·저장
+    # 하지 않는다(신청 수량은 안내만 하고 수집하지 않음, 매핑표 F-048 비고).
+    $wsF48 = $wbNew.Worksheets.Add(); $wsF48.Name = "F-048_교복구매안내신청수량파악"; $ws = $wsF48
+    $ws.Range("A1").Value2 = "[검토중 — 담당자 최종 확인 후 사용] 원본 HWPX 77쪽 [18-3] 대조. 업체명·연락처·치수측정기간·단가는 예시 빈칸(○·0) 그대로 유지, 이름·보호자 성명·전화번호·신청 수량은 입력·저장·자동 출력하지 않음"
+    $ws.Range("A1").Font.Size = 8; $ws.Range("A1").Font.Color = 255
+    $ws.Range("B3:H4").Merge() | Out-Null; $ws.Range("B3").Formula = '=IF(기초자료입력!C4<>"",기초자료입력!C4,"○○학교")&" 교복 구매 안내문"'; $ws.Range("B3").Font.Size = 15; $ws.Range("B3").Font.Bold = $true; $ws.Range("B3").HorizontalAlignment = -4108
+    $ws.Range("B6:H6").Merge() | Out-Null; $ws.Range("B6").Formula = '="안녕하십니까? "&IF(기초자료입력!C4<>"",기초자료입력!C4,"○○학교")&" 입학을 진심으로 축하드립니다."'
+    $ws.Range("B8:H9").Merge() | Out-Null; $ws.Range("B8").Value2 = "우리 학교는 정부의 교복 가격 안정화 방안과 우리교육청의 교복구매비 지원 사업에 따라 교복에 대한 「학교주관구매」를 통한 교복지원을 하고 있습니다."; $ws.Range("B8").WrapText = $true; $ws.Rows.Item(8).RowHeight = 30
+    $ws.Range("B11:H12").Merge() | Out-Null; $ws.Range("B11").Formula = '="우리 학교에서는 "&IF(기초자료입력!C5<>"",기초자료입력!C5,"20○○")&"년 ○월 ○일부터 교복을 착용하며, ○○○(연락처: ○○○-○○○-○○○)을 "&IF(기초자료입력!C5<>"",기초자료입력!C5,"20○○")&"학년도 신입생 교복 사업자로 선정하였고 치수측정기간은 ○월 ○일 ~ ○월 ○일이며 「교복 학교주관구매」로 구입하는 교복의 단가는 000,000원(동복 000원, 하복 000원)입니다."'; $ws.Range("B11").WrapText = $true; $ws.Rows.Item(11).RowHeight = 60
+    $ws.Range("B14:H15").Merge() | Out-Null; $ws.Range("B14").Value2 = "※ 참고: 2026학년도 충북교육청 교복 학교주관구매 권고 상한가는 동복(4pcs 기준) 245,400원, 하복(2pcs 기준) 99,170원임"; $ws.Range("B14").WrapText = $true; $ws.Rows.Item(14).RowHeight = 30
+    $ws.Range("B17:H18").Merge() | Out-Null; $ws.Range("B17").Formula = '="정확한 교복 물량 파악을 위하여 신입생들은 아래의 <교복 구매 신청서>와 <교복 신청 수량>을 작성하여 "&IF(기초자료입력!C18<>"",TEXT(기초자료입력!C18,"yyyy.mm.dd."),"○○년 ○월 ○일")&"까지 학교로 반드시 제출하여 주시기 바랍니다."'; $ws.Range("B17").WrapText = $true; $ws.Rows.Item(17).RowHeight = 30
+    $ws.Range("B20:H21").Merge() | Out-Null; $ws.Range("B20").Value2 = "아울러, 추가 구매를 희망하는 경우(신품 또는 할인된 이월품 선택 가능) 학교에 사전 신청하여 주시기 바랍니다.(교복 물려입기를 할 경우 서식 변경해서 안내)"; $ws.Range("B20").WrapText = $true; $ws.Rows.Item(20).RowHeight = 30
+    $ws.Range("B23:H23").Merge() | Out-Null; $ws.Range("B23").Formula = '=IF(기초자료입력!C8<>"",TEXT(기초자료입력!C8,"yyyy. m. d."),"년  월  일")'; $ws.Range("B23").HorizontalAlignment = -4108
+    $ws.Range("B24:H24").Merge() | Out-Null; $ws.Range("B24").Formula = '=IF(기초자료입력!C4<>"",기초자료입력!C4&"장","○○학교장")'; $ws.Range("B24").HorizontalAlignment = -4108; $ws.Range("B24").Font.Bold = $true
+    $ws.Range("B26:H26").Merge() | Out-Null; $ws.Range("B26").Value2 = "--------------------------------------- 절 취 선 ---------------------------------------"; $ws.Range("B26").HorizontalAlignment = -4108
+    $ws.Range("B28:H28").Merge() | Out-Null; $ws.Range("B28").Formula = '="< "&IF(기초자료입력!C5<>"",기초자료입력!C5,"20○○")&"학년도 신입생 교복 구매 신청서 >"'; $ws.Range("B28").HorizontalAlignment = -4108; $ws.Range("B28").Font.Bold = $true
+    $ws.Range("B29:H29").Merge() | Out-Null; $ws.Range("B29").Value2 = "년   월   일"; $ws.Range("B29").HorizontalAlignment = -4108
+    $ws.Range("B30:H30").Merge() | Out-Null; $ws.Range("B30").Value2 = "(※신입생 배정 번호 또는 학년 반을 기재) 이름 (　　　　　)"
+    $ws.Range("B31:H31").Merge() | Out-Null; $ws.Range("B31").Value2 = "보호자 성명 (　　　　　) 전화번호 (　　　　　)"
+    $ws.Range("B33:H33").Merge() | Out-Null; $ws.Range("B33").Value2 = "【예시】교복 신청 수량(품목별)"; $ws.Range("B33").Font.Bold = $true
+    $ws.Range("B34:H34").Merge() | Out-Null; $ws.Range("B34").Value2 = "품목: 교복(동복)"
+    $ws.Range("B35").Value2 = "품목(남학생)"; $ws.Range("C35").Value2 = "단가(원)"; $ws.Range("D35").Value2 = "신청 수량"; $ws.Range("E35").Value2 = "구매가격(원)"; $ws.Range("F35").Value2 = "품목(여학생)"; $ws.Range("G35").Value2 = "단가(원)"; $ws.Range("H35").Value2 = "신청 수량"; $ws.Range("I35").Value2 = "구매가격(원)"
+    $ws.Range("B36").Value2 = "자켓"; $ws.Range("F36").Value2 = "자켓"
+    $ws.Range("B37").Value2 = "셔츠"; $ws.Range("F37").Value2 = "블라우스"
+    $ws.Range("B38").Value2 = "·"; $ws.Range("F38").Value2 = "·"
+    $ws.Range("B39").Value2 = "·"; $ws.Range("F39").Value2 = "·"
+    $ws.Range("B40").Value2 = "·"; $ws.Range("F40").Value2 = "·"
+    $ws.Range("B41").Value2 = "·"; $ws.Range("F41").Value2 = "·"
+    $ws.Range("B42").Value2 = "합계"; $ws.Range("F42").Value2 = "합계"
+    $ws.Range("B44:H44").Merge() | Out-Null; $ws.Range("B44").Value2 = "※ 교복 품목: 「학칙(학생생활규정)」에서 규정한 단체복 품목"
+    $ws.Range("B45:H45").Merge() | Out-Null; $ws.Range("B45").Formula = '=IF(기초자료입력!C4<>"",기초자료입력!C4&"장 귀하","○○학교장 귀하")'; $ws.Range("B45").HorizontalAlignment = -4108; $ws.Range("B45").Font.Bold = $true
+    $ws.Range("B3:I45").Font.Size = 10
+    $ws.Range("B33,B44").Font.Size = 9
+    $ws.Range("B35:I42").Font.Size = 9; $ws.Range("B35:I35").Font.Bold = $true; $ws.Range("B35:I42").Borders.LineStyle = 1; $ws.Range("B35:I35").Interior.Color = 15987699; $ws.Range("B35:I42").HorizontalAlignment = -4108
+    $ws.Columns.Item("A").ColumnWidth = 2.5; $ws.Columns.Item("B").ColumnWidth = 10; for ($c = 3; $c -le 9; $c++) { $ws.Columns.Item($c).ColumnWidth = 9 }
+    $ps = $ws.PageSetup; $ps.PaperSize = 9; $ps.Orientation = 1; $ps.TopMargin = CmToPt 0.6; $ps.BottomMargin = CmToPt 0.6; $ps.LeftMargin = CmToPt 1.0; $ps.RightMargin = CmToPt 1.0; $ps.HeaderMargin = CmToPt 0.3; $ps.FooterMargin = CmToPt 0.3; $ps.Zoom = 100; $ps.FitToPagesWide = $false; $ps.FitToPagesTall = $false; $ps.PrintArea = "`$A`$1:`$I`$45"
+    $hbF48 = $ws.HPageBreaks.Count; $vbF48 = $ws.VPageBreaks.Count
+    L "F-048 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=$hbF48, VPageBreaks=$vbF48 (원문이 안내문+신청서+표 결합 2부 구성이라 세로 다중 페이지는 허용, 가로 폭 초과(VPageBreaks>0)만 결함으로 간주)"
 
     # ---- 7x. F-032 제안서 접수 결과 ----
     # 원본 HWPX 61쪽 [10] 대조. 업체 반복행(R-03)의 업체명만 반영한다. 접수일자와

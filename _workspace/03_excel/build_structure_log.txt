@@ -46,6 +46,7 @@ F-043 원문 계약체결 대조 레이아웃(계약상대자 업체명 1곳 선
 F-044 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=0, VPageBreaks=0 (둘 다 0이면 A4 1쪽 자연 충족)
 F-045 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=0, VPageBreaks=0
 F-046 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=0, VPageBreaks=0 (둘 다 0이면 A4 1쪽 자연 충족)
+F-048 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=1, VPageBreaks=0 (원문이 안내문+신청서+표 결합 2부 구성이라 세로 다중 페이지는 허용, 가로 폭 초과(VPageBreaks>0)만 결함으로 간주)
 F-032 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=0, VPageBreaks=0
 F-033 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=0, VPageBreaks=0
 F-034 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=0, VPageBreaks=0
@@ -62,4 +63,4 @@ F-040 시트: 자연 배율(Zoom=100) 기준 HPageBreaks=0, VPageBreaks=0
 계약방법안내 시트 작성 완료 (2단계 입찰 예시 확인 및 수동 검토 경계)
 DB 및 반복 DB 시트 보호 완료 (DB=숨김, 반복 DB=VeryHidden, UserInterfaceOnly 매크로 기록 허용, 비밀번호 없음)
 저장 완료: C:\Users\최익창\Downloads\나연수\artifacts\excel\build.xlsm
-PID 30616 Excel 프로세스가 Quit() 이후에도 남아 있어 강제 종료함
+PID 21728 Excel 프로세스가 Quit() 이후에도 남아 있어 강제 종료함
